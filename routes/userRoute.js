@@ -2,10 +2,9 @@ const express = require("express");
 const {
   getUserValidator,
   createUserValidator,
+  createAdminValidator,
   updateUserValidator,
   deleteUserValidator,
-  changeUserPasswordValidator,
-  updateLoggedUserValidator,
   changeLoggedUserPasswordValidator,
 } = require("../utils/validators/userValidator");
 const authServices = require("../services/authServices");
@@ -15,55 +14,38 @@ const {
   getUser,
   updateUser,
   deleteUser,
-  changeUserPassword,
   getLoggedUserData,
   updateLoggedUserPassword,
-  updateLoggedUserData,
-  deleteLoggedUser,
-  activeLoggedUser,
-  uploadProfileImage,
-  resizeImage,
+  createAdmin
 } = require("../services/userService");
 
 const router = express.Router();
 
 router.get("/getMe", authServices.protect, getLoggedUserData, getUser);
-router.delete("/deleteMe", authServices.protect, deleteLoggedUser);
-router.put("/activeMe", authServices.protect, activeLoggedUser);
 router.put(
   "/changeMyPassword",
   authServices.protect,
   changeLoggedUserPasswordValidator,
   updateLoggedUserPassword
 );
-router.put(
-  "/changeMyData",
-  authServices.protect,
-  uploadProfileImage,
-  resizeImage,
-  updateLoggedUserValidator,
-  updateLoggedUserData
-);
-router.put(
-  "/changePassword/:id",
-  authServices.protect,
-  authServices.allowedTo("admin"),
-  changeUserPasswordValidator,
-  changeUserPassword
-);
-
+router
+  .route("/createadmin")
+  .post(
+    authServices.protect,
+    authServices.allowedTo("admin"),
+    createAdminValidator,
+    createAdmin
+  )
 router
   .route("/")
   .get(
     authServices.protect,
-    authServices.allowedTo("admin", "manager"),
+    authServices.allowedTo("admin"),
     getUsers
   )
   .post(
     authServices.protect,
     authServices.allowedTo("admin"),
-    uploadProfileImage,
-    resizeImage,
     createUserValidator,
     createUser
   );
@@ -78,8 +60,6 @@ router
   .put(
     authServices.protect,
     authServices.allowedTo("admin"),
-    uploadProfileImage,
-    resizeImage,
     updateUserValidator,
     updateUser
   )

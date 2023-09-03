@@ -1,33 +1,11 @@
-const bcrypt = require("bcryptjs");
-const sharp = require("sharp");
-const { v4: uuidv4 } = require("uuid");
 const asyncHandler = require("express-async-handler");
 const ApiError = require("../utils/apiError");
 const factory = require("./handllerFactory");
 const User = require("../models/userModel");
 const generateToken = require("../utils/generateToken");
-const { uploadSingleImage } = require("../middlewares/uploadImageMiddleware");
 
-//upload Singel image
-exports.uploadProfileImage = uploadSingleImage("profileImg");
-//image processing
-exports.resizeImage = asyncHandler(async (req, res, next) => {
-  const filename = `user-${uuidv4()}-${Date.now()}.jpeg`;
 
-  if (req.file) {
-    await sharp(req.file.buffer)
-      .resize(600, 600)
-      .toFormat("jpeg")
-      .jpeg({ quality: 95 })
-      .toFile(`uploads/users/${filename}`);
-
-    //save image into our db
-    req.body.profileImg = filename;
-  }
-
-  next();
-});
-//@desc get list of user
+//@desc get list of users
 //@route GET /api/v1/users
 //@access private
 exports.getUsers = factory.getALl(User);
@@ -38,7 +16,34 @@ exports.getUser = factory.getOne(User);
 //@desc create user
 //@route POST /api/v1/users
 //@access private
-exports.createUser = factory.createOne(User);
+function generateNumber() {
+  const min = 100000000000;
+  const max = 999999999999;
+  const randomNum = Math.floor(Math.random() * (max - min + 1)) + min;
+  return randomNum;
+}
+exports.createUser = asyncHandler(async (req, res, next) => {
+  //1-create user
+  const user = await User.create({
+    name: req.body.name,
+    email: req.body.email,
+    code:generateNumber(),
+  });
+  res.status(201).json({ data: user, token });
+});
+//@desc create user
+//@route POST /api/v1/users/createadmin
+//@access private
+exports.createAdmin = asyncHandler(async (req, res, next) => {
+  //1-create user
+  const user = await User.create({
+    name: req.body.name,
+    email: req.body.email,
+    phone: req.body.phone,
+    role:"admin"
+  });
+  res.status(201).json({ data: user, token });
+});
 //@desc update specific user
 //@route PUT /api/v1/user/:id
 //@access private
@@ -49,34 +54,15 @@ exports.updateUser = asyncHandler(async (req, res, next) => {
       name: req.body.name,
       email: req.body.email,
       phone: req.body.phone,
-      profileImg: req.body.profileImg,
-      role: req.body.role,
     },
     {
       new: true,
     }
   );
   if (!user) {
-    return next(new ApiError(`No document For this id ${req.params.id}`, 404));
+    return next(new ApiError(`User Not Found`, 404));
   }
 
-  res.status(200).json({ data: user });
-});
-
-exports.changeUserPassword = asyncHandler(async (req, res, next) => {
-  const user = await User.findByIdAndUpdate(
-    req.params.id,
-    {
-      password: await bcrypt.hash(req.body.password, 12),
-      passwordChangedAt: Date.now(),
-    },
-    {
-      new: true,
-    }
-  );
-  if (!user) {
-    return next(new ApiError(`No document For this id ${req.params.id}`, 404));
-  }
   res.status(200).json({ data: user });
 });
 //@desc delete User
@@ -110,36 +96,4 @@ exports.updateLoggedUserPassword = asyncHandler(async (req, res, next) => {
   const token = generateToken(req.user._id);
 
   res.status(200).json({ data: user, token });
-});
-//@desc update logged user data without updating password or role
-//@route PUT /api/v1/user/changeMyData
-//@access private/protect
-exports.updateLoggedUserData = asyncHandler(async (req, res, next) => {
-  const user = await User.findByIdAndUpdate(
-    req.user._id,
-    {
-      name: req.body.name,
-      email: req.body.email,
-      phone: req.body.phone,
-      profileImg: req.body.profileImg,
-    },
-    {
-      new: true,
-    }
-  );
-  res.status(200).json({ data: user });
-});
-//@desc deactivate logged user
-//@route DELETE /api/v1/user/deleteMe
-//@access private/protect
-exports.deleteLoggedUser = asyncHandler(async (req, res, next) => {
-  await User.findByIdAndUpdate(req.user._id, { active: false });
-  res.status(204).send();
-});
-//@desc activate logged user
-//@route PUT /api/v1/user/activeMe
-//@access private/protect
-exports.activeLoggedUser = asyncHandler(async (req, res, next) => {
-  await User.findByIdAndUpdate(req.user._id, { active: true });
-  res.status(201).json({ data: "success" });
 });
