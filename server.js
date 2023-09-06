@@ -24,7 +24,6 @@ const ApiError = require("./utils/apiError");
 //GLobal error handling middleware for express
 const globalError = require("./middlewares/errorMiddleware");
 
-
 //connect with database
 dbConnection();
 mongoose.set("strictQuery", true);
@@ -34,17 +33,14 @@ const app = express();
 app.use(cors());
 app.options("*", cors());
 
-
 // compress all responses
 app.use(compression());
-
-
 
 //middlewares
 //pasring the comming data to json
 app.use(
   express.json({
-    limit: "250kp",
+    limit: "250kb",
   })
 );
 //serve static files inside 'uploads'

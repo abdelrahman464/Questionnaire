@@ -1,8 +1,8 @@
 const Key = require("../models/keyModel");
 const factory = require("./handllerFactory");
 
-//@desc get list of categories
-//@route GET /api/v1/categories
+//@desc get list of keys
+//@route GET /api/v1/keys
 //@access public
 exports.getKeys = factory.getALl(Key, "Key");
 //@desc get specific Key by id

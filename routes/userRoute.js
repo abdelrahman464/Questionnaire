@@ -16,7 +16,7 @@ const {
   deleteUser,
   getLoggedUserData,
   updateLoggedUserPassword,
-  createAdmin
+  createAdmin,
 } = require("../services/userService");
 
 const router = express.Router();
@@ -35,14 +35,10 @@ router
     authServices.allowedTo("admin"),
     createAdminValidator,
     createAdmin
-  )
+  );
 router
   .route("/")
-  .get(
-    authServices.protect,
-    authServices.allowedTo("admin"),
-    getUsers
-  )
+  .get(authServices.protect, authServices.allowedTo("admin"), getUsers)
   .post(
     authServices.protect,
     authServices.allowedTo("admin"),
@@ -69,5 +65,11 @@ router
     deleteUserValidator,
     deleteUser
   );
+const {
+  saveAnswers,
+  countAnswersAverage,
+} = require("../services/answerService");
+router.route("/:id/saveanswers").post(saveAnswers);
+router.route("/:id/countanswers").get(countAnswersAverage);
 
 module.exports = router;
