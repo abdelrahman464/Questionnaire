@@ -10,7 +10,6 @@ const keySchema = mongoose.Schema(
       minlength: [2, "too short key name"],
     },
    
-    image: String,
   },
   { timestamps: true }
 );

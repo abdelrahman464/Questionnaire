@@ -1,6 +1,4 @@
 const crypto = require("crypto");
-const passport = require("passport");
-const GoogleStategy = require("passport-google-oauth20");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const asyncHandler = require("express-async-handler");

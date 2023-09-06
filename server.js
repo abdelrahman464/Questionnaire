@@ -1,7 +1,7 @@
 const path = require("path");
 const express = require("express");
 const mongoose = require("mongoose");
-const passport = require("passport");
+
 //middleware
 const morgan = require("morgan");
 //env file
@@ -24,7 +24,6 @@ const ApiError = require("./utils/apiError");
 //GLobal error handling middleware for express
 const globalError = require("./middlewares/errorMiddleware");
 
-const { webhookCheckout } = require("./services/OrderService");
 
 //connect with database
 dbConnection();
@@ -35,17 +34,11 @@ const app = express();
 app.use(cors());
 app.options("*", cors());
 
-app.use(passport.initialize());
 
 // compress all responses
 app.use(compression());
 
-//checkout webhook
-app.post(
-  "/webhook-checkout",
-  express.raw({ type: "application/json" }),
-  webhookCheckout
-);
+
 
 //middlewares
 //pasring the comming data to json
