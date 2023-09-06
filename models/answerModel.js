@@ -3,7 +3,6 @@ const mongoose = require("mongoose");
 //1- create schema
 const answerSchema = mongoose.Schema(
   {
-
     userId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',

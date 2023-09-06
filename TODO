@@ -1,0 +1,28 @@
+answerService
+    -store answers of user 
+    -answers of user 
+    -average of each section
+    -store answers of raters *
+    -answers of raters  
+    -average of each section from raters aspect
+    -generate pdf of user's answer 
+
+ userService 
+    -add raters emails 
+    -generate rateCode for user with his code and store it in user 
+    -generate link of test and add rateCode     7mos.com/test?code=2345
+    -send emails to raters to rate him 
+
+
+code --> 2345 
+email --> examble@gamil.com
+
+
+answers :[] 
+*: id   
+  email
+  answers 
+
+
+
+

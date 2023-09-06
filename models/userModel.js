@@ -8,10 +8,6 @@ const userShcema = new mongoose.Schema(
       trim: true,
       required: [true, "name required"],
     },
-    slug: {
-      type: String,
-      lowercase: true,
-    },
     email: {
       type: String,
       required: [true, "email required"],
@@ -24,11 +20,21 @@ const userShcema = new mongoose.Schema(
       required: [true, "code required"],
       minlength: [8, "too short code"],
     },
+    rateCode: {
+      type: String,
+      minlength: [8, "too short code"],
+    },
     password: {
       type: String,
       required: [true, "password required"],
       minlength: [8, "too short Password"],
     },
+    ratersEmails:[
+      { 
+      raterEmail:String
+      }
+    ]
+  ,
     passwordChangedAt: Date,
     passwordResetCode: String,
     passwordResetExpires: Date,

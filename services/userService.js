@@ -13,7 +13,7 @@ exports.getUsers = factory.getALl(User);
 //@route GET /api/v1/User/:id
 //@access private
 exports.getUser = factory.getOne(User);
-//@desc create user
+//@desc generate code for user
 //@route POST /api/v1/users
 //@access private
 function generateNumber() {
@@ -22,6 +22,10 @@ function generateNumber() {
   const randomNum = Math.floor(Math.random() * (max - min + 1)) + min;
   return randomNum;
 }
+//@desc create new user
+//@route POST /api/v1/users
+//@access private
+
 exports.createUser = asyncHandler(async (req, res, next) => {
   //1-create user
   const user = await User.create({
@@ -97,3 +101,9 @@ exports.updateLoggedUserPassword = asyncHandler(async (req, res, next) => {
 
   res.status(200).json({ data: user, token });
 });
+//TODO 
+//add user's raters to his doc  save it 
+//TODO 
+//generate rateCode for user and save it 
+//TODO 
+//send mails to user's raters with rateCode  
