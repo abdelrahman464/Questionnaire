@@ -22,6 +22,7 @@ function generateNumber() {
   const randomNum = Math.floor(Math.random() * (max - min + 1)) + min;
   return randomNum;
 }
+
 //@desc create new user
 //@route POST /api/v1/users
 //@access private
@@ -101,9 +102,121 @@ exports.updateLoggedUserPassword = asyncHandler(async (req, res, next) => {
 
   res.status(200).json({ data: user, token });
 });
+//----------------------------------------------------------------------------------------//
 //TODO 
-//add user's raters to his doc  save it 
-//TODO 
-//generate rateCode for user and save it 
-//TODO 
-//send mails to user's raters with rateCode  
+//@desc add raters' emails to user with his code
+//@route PUT /api/v1/user/addRaters emails
+//@access public/protect
+//@params  code='ZMxs' raterEmailsToAdd = ['rater1@example.com', 'rater2@example.com'];                                      ;
+
+exports.addRatersEmail=async(req,res)=> {
+  try {
+    const{code,raterEmails}=req.body;
+    // Find the user by their name
+    const user = await User.findOne({ code:code });
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+    
+
+    // Add rater emails to the user's ratersEmails array
+    user.ratersEmails = user.ratersEmails.concat(raterEmails.map(email => ({ raterEmail: email })));
+
+    // Save the updated user
+    await user.save();
+
+    return res.status(200).json({status:`success`,data:user});
+  } catch (error) {
+    return res.status(200).json({status:`faild`,msg:error});
+  }
+}
+
+//----------------------------------------------------------------------------------------//
+// Function to generate a unique rateCode
+function generateUniqueRateCode() {
+  // Generate a random rateCode (you can customize this logic as needed)
+  const randomCode = Math.random().toString(36).substr(2, 8).toUpperCase();
+
+  return User.findOne({ rateCode: randomCode })
+    .then(existingUser => {
+      if (existingUser) {
+        // If the generated code already exists, recursively call the function again
+        return generateUniqueRateCode();
+      }
+      return randomCode;
+    })
+    .catch(error => {
+      throw error;
+    });
+}
+//@desc generate rateCode for user and store it to him 
+//@access inside app , no route for it 
+//@params  code='ZMxs'   
+async function generateRateCodeForUser(userCode) {
+  try {
+    // Find the user by their ID
+    const user = await User.findOne({code:userCode});
+
+    if (!user) {
+      throw new Error('User not found');
+    }
+
+    // Generate a unique rateCode
+    const rateCode = generateUniqueRateCode();
+
+    // Set the rateCode for the user
+    user.rateCode = rateCode;
+
+    // Save the updated user
+    await user.save();
+
+    return rateCode;
+  } catch (error) {
+    throw error;
+  }
+}
+//@desc send emails to raters' emails to user with his code
+//@route PUT /api/v1/user/sendEmails rater emails
+//@access public/protect
+//@params  code='ZMxs'    
+
+exports.SendEmailsToRaters = asyncHandler(async (req, res) => {
+  const { userCode } = req.params;
+  const rateCode= await generateRateCodeForUser(userCode);
+
+  const user = await User.findOne({code:userCode});
+  if (!user) {
+    return next(ApiError("live not found", 404));
+  }
+  let url=`domain?code=${rateCode}`
+
+
+  user.ratersEmails.forEach(async (rater) => {
+    try {
+      let emailMessage = "";
+      if (!req.body.info) {
+        emailMessage = `Hi ${rater.raterEmail} 
+                            \n your friend ${user.email} invited you to
+                            \n to rate him in a quick Quiz
+                            \n here is the link ${url}`;
+      } else {
+        emailMessage = `Hi ${rater.raterEmail} 
+                        \n your friend ${user.email} invited you to
+                        \n to rate him in aquick Quiz
+                        \n ${req.body.info}
+                        \n here is the link ${url}`;
+      }
+      await sendEmail({
+        to: rater.raterEmail,
+        subject: `rate your frined ${user.email}`,
+        text: emailMessage,
+      });
+    } catch (err) {
+      return next(new ApiError("there is a problem with sending Email", 500));
+    }
+  });
+
+  res.status(200).json({ succes: "true" });
+});
+

@@ -8,11 +8,11 @@ answerService
     -generate pdf of user's answer 
 
  userService 
-    -add raters emails 
-    -generate rateCode for user with his code and store it in user 
-    -generate link of test and add rateCode     7mos.com/test?code=2345
-    -send emails to raters to rate him 
-
+    -add raters emails   'done'
+    -generate rateCode for user with his code and store it in user  'done'
+    -generate link of test and add rateCode     7mos.com/test?code=2345 'done'
+    -send emails to raters to rate him   'done'
+    -make routes for SendEmailsToRaters and addRatersEmail
 
 code --> 2345 
 email --> examble@gamil.com
