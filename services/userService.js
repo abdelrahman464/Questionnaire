@@ -33,6 +33,8 @@ exports.createUser = asyncHandler(async (req, res, next) => {
     name: req.body.name,
     email: req.body.email,
     code:generateNumber(),
+    rateCode:generateNumber(),
+    
   });
   res.status(201).json({ data: user, token });
 });
