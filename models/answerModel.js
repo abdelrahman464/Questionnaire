@@ -22,10 +22,9 @@ const answerSchema = mongoose.Schema({
       },
     },
   ],
-  raters: {
+  raters:[{
     email: {
       type: String,
-      // required: [true, "email required"],
       unique: true,
       lowercase: true,
     },
@@ -44,7 +43,8 @@ const answerSchema = mongoose.Schema({
         },
       },
     ],
-  },
+  }],
+  
 });
 
 //2- create model

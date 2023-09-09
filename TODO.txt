@@ -1,6 +1,6 @@
 answerService
-    -store answers of user 
-    -answers of user 
+    -store answers of user 'done'
+    -answers of user  'done'
     -average of each section
     -store answers of raters *
     -answers of raters  
