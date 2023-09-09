@@ -24,6 +24,21 @@ exports.login = asyncHandler(async (req, res, next) => {
   res.status(200).json({ data: user, token });
 });
 
+//@desc login
+//@route POST /api/v1/auth/login
+//@access public
+exports.loginUser = asyncHandler(async (req, res, next) => {
+  //1- check if password and emaail in the body
+  //2- check if user exist & check if password is correct
+  const user = await User.findOne({ code: req.body.code });
+  if (!user || !(await bcrypt.compare(req.body.code, user.code))) {
+    return next(new ApiError("incorrect code", 401));
+  }
+  //3- generate token
+  const token = generateToken(user._id);
+  //3- send response to client side
+  res.status(200).json({ data: user, token });
+});
 //@desc make sure user is logged in
 exports.protect = asyncHandler(async (req, res, next) => {
   //1- check if token exists, if exist get it
