@@ -14,6 +14,7 @@ const generateToken = require("../utils/generateToken");
 exports.login = asyncHandler(async (req, res, next) => {
   //1- check if password and emaail in the body
   //2- check if user exist & check if password is correct
+  console.log(req.body.password , req.body.email);
   const user = await User.findOne({ email: req.body.email });
   if (!user || !(await bcrypt.compare(req.body.password, user.password))) {
     return next(new ApiError("incorrect password or email", 401));

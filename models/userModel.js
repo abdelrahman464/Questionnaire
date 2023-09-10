@@ -17,7 +17,6 @@ const userShcema = new mongoose.Schema(
     phone: String,
     code: {
       type: String,
-      required: [true, "code required"],
       minlength: [8, "too short code"],
     },
     rateCode: {
