@@ -1,8 +1,10 @@
 const asyncHandler = require("express-async-handler");
+const bcrypt = require("bcryptjs");
 const ApiError = require("../utils/apiError");
 const factory = require("./handllerFactory");
 const User = require("../models/userModel");
 const generateToken = require("../utils/generateToken");
+const sendEmail = require("../utils/sendEmail");
 
 
 //@desc get list of users
@@ -132,7 +134,7 @@ exports.updateLoggedUserPassword = asyncHandler(async (req, res, next) => {
 //@access public/protect
 //@params  code='ZMxs' raterEmailsToAdd = ['rater1@example.com', 'rater2@example.com'];                                      ;
 
-exports.addRatersEmail=asyncHandler(async(req,res)=> {
+exports.addRatersEmail=asyncHandler(async(req,res,next)=> {
     const{raterEmails}=req.body;
     // Find the user by their name
     
@@ -159,14 +161,14 @@ exports.addRatersEmail=asyncHandler(async(req,res)=> {
 //@access public/protect
 //@params  code='ZMxs'    
 
-exports.SendEmailsToRaters = asyncHandler(async (req, res) => {
+exports.SendEmailsToRaters = asyncHandler(async (req, res,next) => {
   
 
   const user = await User.findOne({code:req.user.Code});
   if (!user) {
     return next(ApiError("live not found", 404));
   }
-  let url=`${process.env.RATERS_URL}?code=${user.rateCode}`
+  const url=`${process.env.RATERS_URL}?code=${user.rateCode}`
 
 
   user.ratersEmails.forEach(async (rater) => {
