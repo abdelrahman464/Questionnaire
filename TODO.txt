@@ -1,10 +1,8 @@
 answerService
-    -store answers of user 'done'
-    -answers of user  'done'
-    -average of each section 'done'
-    -store answers of raters *
-    -answers of raters  
-    -average of each section from raters aspect
+    -store answers of user 'done test'
+    -average of each section 'done test'
+    -store answers of raters * 'done test'
+    -average of each section from raters aspect 'done'
     -generate pdf of user's answer 
 
  userService 

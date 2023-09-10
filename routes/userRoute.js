@@ -65,11 +65,5 @@ router
     deleteUserValidator,
     deleteUser
   );
-const {
-  saveAnswers,
-  countAnswersAverage,
-} = require("../services/answerService");
-router.route("/:id/saveanswers").post(saveAnswers);
-router.route("/:id/countanswers").get(countAnswersAverage);
 
 module.exports = router;
