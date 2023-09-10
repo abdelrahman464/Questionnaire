@@ -131,3 +131,39 @@ exports.countRatersAnswersAverage = asyncHandler(async (req, res) => {
   // Return the result
   res.json(result);
 });
+
+
+
+//@desc generatepdf
+//@route POST /api/v1/answer/saveanswers
+//@access private
+exports.generatePDF = asyncHandler(async (req, res) => {
+  const userId = req.user._id;
+  const { isRater } = req.body;
+
+  // Get the answers from the database
+  const answers = await Answer.find({
+    userId: userId,
+    isRater: isRater,
+  });
+
+  // Create a new PDF document
+  const pdf = new PDF();
+
+  // Add the answers to the PDF document
+  for (const answer of answers) {
+    pdf.text(`User ID: ${answer.userId}`);
+    pdf.text(`Is Rater: ${answer.isRater}`);
+    for (const questionAnswer of answer.userAnswer) {
+      pdf.text(`Question ID: ${questionAnswer.questionId}`);
+      pdf.text(`Answer: ${questionAnswer.answer}`);
+    }
+  }
+
+  // Save the PDF document to a file
+  const filename = `answers-${userId}-${isRater}.pdf`;
+  await pdf.save(filename);
+
+  // Redirect the user to the PDF file
+  res.redirect(`/pdfs/${filename}`);
+});
