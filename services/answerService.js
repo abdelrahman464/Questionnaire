@@ -1,6 +1,8 @@
 const asyncHandler = require("express-async-handler");
 const Key = require("../models/keyModel");
+const User= require("../models/userModel");
 const Answer = require("../models/answerModel");
+
 
 //@desc Save answers to user
 //@route POST /api/v1/answer/saveanswers
@@ -20,6 +22,13 @@ exports.saveAnswers = asyncHandler(async (req, res) => {
   } else {
     // The user is a user
     const userId = req.user._id;
+    const user = await User.findOne({_id:userId});
+    if(user.quizTaken){
+      return res.status(200).json({ status: "you cannot take test again" });
+    }
+    user.quizTaken=1;
+    user.save();
+
     const answer = new Answer({
       userId,
       userAnswer: answers,
@@ -43,8 +52,10 @@ exports.countAnswersAverage = asyncHandler(async (req, res) => {
   // Get all sections
   const sections = await Key.find();
   // Loop on each section
+  // eslint-disable-next-line no-restricted-syntax
   for (const section of sections) {
     // Find all answers for the user in the section
+    // eslint-disable-next-line no-await-in-loop
     const answers = await Answer.findOne(
       {
         userId,
@@ -60,6 +71,7 @@ exports.countAnswersAverage = asyncHandler(async (req, res) => {
     // Calculate the total answerEvaluation
       const totalAnswerevaluation = answers.reduce((acc, answer) => {
         acc += answer.userAnswer.reduce(
+          // eslint-disable-next-line no-shadow
           (acc, answer) => acc + answer.answer,
           0
         );
@@ -93,8 +105,10 @@ exports.countRatersAnswersAverage = asyncHandler(async (req, res) => {
   // Get all sections
   const sections = await Key.find();
   // Loop on each section
+  // eslint-disable-next-line no-restricted-syntax
   for (const section of sections) {
     // Find all answers for the user in the section
+    // eslint-disable-next-line no-await-in-loop
     const answers = await Answer.findOne(
       {
         userId,
@@ -134,36 +148,44 @@ exports.countRatersAnswersAverage = asyncHandler(async (req, res) => {
 
 
 
+
+
+
+
+
+
+
+
 //@desc generatepdf
 //@route POST /api/v1/answer/saveanswers
 //@access private
-exports.generatePDF = asyncHandler(async (req, res) => {
-  const userId = req.user._id;
-  const { isRater } = req.body;
+// exports.generatePDF = asyncHandler(async (req, res) => {
+//   const userId = req.user._id;
+//   const { isRater } = req.body;
 
-  // Get the answers from the database
-  const answers = await Answer.find({
-    userId: userId,
-    isRater: isRater,
-  });
+//   // Get the answers from the database
+//   const answers = await Answer.find({
+//     userId: userId,
+//     isRater: isRater,
+//   });
 
-  // Create a new PDF document
-  const pdf = new PDF();
+//   // Create a new PDF document
+//   const pdf = new PDF();
 
-  // Add the answers to the PDF document
-  for (const answer of answers) {
-    pdf.text(`User ID: ${answer.userId}`);
-    pdf.text(`Is Rater: ${answer.isRater}`);
-    for (const questionAnswer of answer.userAnswer) {
-      pdf.text(`Question ID: ${questionAnswer.questionId}`);
-      pdf.text(`Answer: ${questionAnswer.answer}`);
-    }
-  }
+//   // Add the answers to the PDF document
+//   for (const answer of answers) {
+//     pdf.text(`User ID: ${answer.userId}`);
+//     pdf.text(`Is Rater: ${answer.isRater}`);
+//     for (const questionAnswer of answer.userAnswer) {
+//       pdf.text(`Question ID: ${questionAnswer.questionId}`);
+//       pdf.text(`Answer: ${questionAnswer.answer}`);
+//     }
+//   }
 
-  // Save the PDF document to a file
-  const filename = `answers-${userId}-${isRater}.pdf`;
-  await pdf.save(filename);
+//   // Save the PDF document to a file
+//   const filename = `answers-${userId}-${isRater}.pdf`;
+//   await pdf.save(filename);
 
-  // Redirect the user to the PDF file
-  res.redirect(`/pdfs/${filename}`);
-});
+//   // Redirect the user to the PDF file
+//   res.redirect(`/pdfs/${filename}`);
+// });

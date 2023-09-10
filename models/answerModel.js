@@ -25,7 +25,6 @@ const answerSchema = mongoose.Schema({
   raters:[{
     email: {
       type: String,
-      unique: true,
       lowercase: true,
     },
     answers: [

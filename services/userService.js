@@ -190,4 +190,17 @@ exports.SendEmailsToRaters = asyncHandler(async (req, res) => {
 
   res.status(200).json({ succes: "true" });
 });
+exports.availUserTakeQuiz = asyncHandler(async (req, res) => {
+  const {id}=req.params;
+  const user = await User.findOne({_id:id});
+  if(!user){
+   return res.status(401).json({status:'faild',msg:'user not found'})
+  } 
+  if(!user.quizTaken){
+   return res.status(401).json({status:'faild',msg:'user already can take quiz'})
+  }
+    user.quizTaken=0;
+    user.save();
+    return res.status(200).json({status:'success',msg:'user can take test again'})
+ });
 

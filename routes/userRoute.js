@@ -17,6 +17,7 @@ const {
   getLoggedUserData,
   updateLoggedUserPassword,
   createAdmin,
+  availUserTakeQuiz,
 } = require("../services/userService");
 
 const router = express.Router();
@@ -66,4 +67,10 @@ router
     deleteUser
   );
 
+  router
+  .route("/availUserToTakeQuiz/:id").put(
+  authServices.protect,
+  authServices.allowedTo("admin"),
+  availUserTakeQuiz
+);
 module.exports = router;

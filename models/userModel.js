@@ -23,6 +23,10 @@ const userShcema = new mongoose.Schema(
       type: String,
       minlength: [8, "too short code"],
     },
+    quizTaken: {
+      type: Boolean,
+      default:0
+    },
     password: {
       type: String,
       // required: [true, "password required"],
