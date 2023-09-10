@@ -3,7 +3,7 @@ const Key = require("../models/keyModel");
 const Answer = require("../models/answerModel");
 
 //@desc Save answers to user
-//@route POST /api/v1/User/:id/saveanswers
+//@route POST /api/v1/answer/saveanswers
 //@access private
 exports.saveAnswers = asyncHandler(async (req, res) => {
   const { answers,isRater} = req.body;
@@ -34,7 +34,7 @@ exports.saveAnswers = asyncHandler(async (req, res) => {
   }
 });
 //@desc Count The average answers for a user in each section
-//@route GET /api/v1/User/:id/countanswers
+//@route GET /api/v1/answer/countanswers
 //@access private
 exports.countAnswersAverage = asyncHandler(async (req, res) => {
   const result = [];
@@ -83,6 +83,9 @@ exports.countAnswersAverage = asyncHandler(async (req, res) => {
 });
 
 
+//@desc Count The average answers for a rater in each section
+//@route GET /api/v1/answer/countanswersraters
+//@access private
 exports.countRatersAnswersAverage = asyncHandler(async (req, res) => {
   const result = [];
 
