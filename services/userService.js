@@ -22,6 +22,24 @@ function generateNumber() {
   const randomNum = Math.floor(Math.random() * (max - min + 1)) + min;
   return randomNum;
 }
+//----------------------------------------------------------------------------------------//
+// Function to generate a unique rateCode
+ function generateUniqueCode(field) {
+  // Generate a random rateCode (you can customize this logic as needed)
+  const randomCode = generateNumber();
+
+  return User.findOne({ field: randomCode })
+    .then(existingUser => {
+      if (existingUser) {
+        // If the generated code already exists, recursively call the function again
+        return generateUniqueCode(field);
+      }
+      return randomCode;
+    })
+    .catch(error => {
+      throw error;
+    });
+}
 
 //@desc create new user
 //@route POST /api/v1/users
@@ -29,14 +47,15 @@ function generateNumber() {
 
 exports.createUser = asyncHandler(async (req, res, next) => {
   //1-create user
+  const code =  generateNumber();
+  const rateCode = generateNumber();
   const user = await User.create({
     name: req.body.name,
     email: req.body.email,
-    code:generateUniqueCode(code),
-    rateCode:generateUniqueCode(rateCode),
-    
+    code,
+    rateCode,
   });
-  res.status(201).json({ data: user, token });
+  res.status(201).json({ data: user });
 });
 //@desc create user
 //@route POST /api/v1/users/createadmin
@@ -49,7 +68,7 @@ exports.createAdmin = asyncHandler(async (req, res, next) => {
     phone: req.body.phone,
     role:"admin"
   });
-  res.status(201).json({ data: user, token });
+  res.status(201).json({ data: user });
 });
 //@desc update specific user
 //@route PUT /api/v1/user/:id
@@ -133,24 +152,7 @@ exports.addRatersEmail=asyncHandler(async(req,res)=> {
 }
 )
 
-//----------------------------------------------------------------------------------------//
-// Function to generate a unique rateCode
-async function generateUniqueCode(field) {
-  // Generate a random rateCode (you can customize this logic as needed)
-  const randomCode = generateNumber();
 
-  return User.findOne({ field: randomCode })
-    .then(existingUser => {
-      if (existingUser) {
-        // If the generated code already exists, recursively call the function again
-        return generateUniqueCode();
-      }
-      return randomCode;
-    })
-    .catch(error => {
-      throw error;
-    });
-}
 //@desc send emails to raters' emails to user with his code
 //@route PUT /api/v1/user/sendEmails rater emails
 //@access public/protect

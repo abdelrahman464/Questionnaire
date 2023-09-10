@@ -31,8 +31,8 @@ exports.loginUser = asyncHandler(async (req, res, next) => {
   //1- check if password and emaail in the body
   //2- check if user exist & check if password is correct
   const user = await User.findOne({ code: req.body.code });
-  if (!user || !(await bcrypt.compare(req.body.code, user.code))) {
-    return next(new ApiError("incorrect code", 401));
+  if (!user) {
+    return next(new ApiError("user not found", 401));
   }
   //3- generate token
   const token = generateToken(user._id);

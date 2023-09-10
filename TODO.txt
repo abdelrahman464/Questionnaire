@@ -1,7 +1,7 @@
 answerService
     -store answers of user 'done'
     -answers of user  'done'
-    -average of each section
+    -average of each section 'done'
     -store answers of raters *
     -answers of raters  
     -average of each section from raters aspect
@@ -14,7 +14,7 @@ answerService
     -send emails to raters to rate him   'done'
     -make routes for SendEmailsToRaters and addRatersEmail
 
-code --> 2345 
+code --> 2345 ----
 email --> examble@gamil.com
 
 
