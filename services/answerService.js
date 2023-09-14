@@ -1,6 +1,7 @@
 const asyncHandler = require("express-async-handler");
 const Key = require("../models/keyModel");
 const User= require("../models/userModel");
+const Questions = require("../models/questionModel");
 const Answer = require("../models/answerModel");
 const fs=require('fs');
 const PDF = require('pdfkit');
@@ -8,16 +9,14 @@ const PDF = require('pdfkit');
 
 
 
-
-
-async function checkIfUserHasRater(userId) {
+async function checkIfUserHasThreeRaters(userId) {
   // Get the user document from the database
   const answer = await Answer.findOne({ userId: userId });
 
   // Check if the user document exists
   if (answer) {
     // Check if the user has already been rated by the rater
-    if (answer.raters >= 1) {
+    if (answer.raters.length == 3) {
       // The user has already been rated by the rater
       return true;
     } else {
@@ -28,6 +27,8 @@ async function checkIfUserHasRater(userId) {
     return false;
   }
 }
+
+
 async function checkIfUserHasAnswerBefore(userId) {
   // Get the user document from the database
   const answer = await Answer.findOne({ userId: userId });
@@ -53,45 +54,39 @@ exports.saveAnswers = asyncHandler(async (req, res) => {
   const userId = req.user._id;
   //validation on raters' emails
   if (isRater) {
-    // Check if the user has already been rated by the rater
-    const hasRater = await checkIfUserHasRater(userId);
-
-    // If the user has not yet been rated by the rater, append the new rater to the raters array
-    if (hasRater) {
-      await Answer.updateOne({ userId: userId }, {
-        $push: {
-          raters: { email: raterEmail,answers:[{answers}] }
-        }
-      });
-      return res.status(200).json({ status: "This user had a rater before. Adding a new one to the array" });
+    const hasThreeRaters = await checkIfUserHasThreeRaters(userId);
+    if(hasThreeRaters){
+      const secondAnswerDocument = await Answer.findOne({ userId: userId }, { sort: { createdAt: 1 } }).skip(1);
+      await secondAnswerDocument.updateOne({ $push: { raters: { email: raterEmail, answers: answers } } });
+      return res.status(200).json({status:"Added a rater to the second answer successfully"});
+    }
+    else{
+        await Answer.updateOne({ userId: userId }, {
+          $push: {
+            raters: { email: raterEmail,answers:answers }
+          }
+        });
+      return res.status(200).json({status:"Added a rater successfully"});
     }
     // The user is a rater
-    await Answer.updateOne({ userId: userId }, {
-        $push: {
-          
-          raters: { email: raterEmail,answers:[{answers}] }
-        }
-      });
     
-    return res.status(200).json({status:"Added a rater successfully"});
   } else {
-    const hasAnswer= await checkIfUserHasAnswerBefore(userId);
-    if (hasAnswer) {
-      await Answer.updateMany({ userId: userId }, {
-        $push: {
-          userAnswer:answers
-          
-        }
-      });
-      return res.status(200).json({ status: "This user had answers before. Adding new answers to the array" });
-    }
-    // The user is a user
     const user = await User.findOne({_id:userId});
     if(user.quizTaken){
       return res.status(200).json({ status: "you cannot take test again" });
     }
     user.quizTaken=1;
     user.save();
+    const hasAnswer= await checkIfUserHasAnswerBefore(userId);
+    if (hasAnswer) {
+      const answer = new Answer({
+        userId,
+        userAnswer: answers,
+      });
+      await answer.save();
+      return res.status(200).json({ status: "This user had answers before. Adding new answers to the array" });
+    }
+    
 
     const answer = new Answer({
       userId,
@@ -284,49 +279,62 @@ exports.countRatersAnswersAverage = asyncHandler(async (req, res) => {
 
 
 //@desc generatepdf
-//@route POST /api/v1/answer/generatepdf
+//@route GET /api/v1/answer/generatepdf
 //@access private
 exports.generatePDF = asyncHandler(async (req, res) => {
   const userId = req.user._id;
-  const { isRater } = req.body;
   // Create a new PDF document
   const answers = await Answer
   .find({ userId: userId })
-  firstAnswer=answers[0];
-  secondAnswer = answers[1];
-  thirdAnswer = answers[2];
-  
-  console.log(answers);
-  console.log(secondAnswer);
+  // const firstAnswers = 
+  const questions = await Questions.find();
+
+  // const secondAnswers = answers.userAnswer.slice(3, 6);
+  firstAnswers = answers[0];
+  secondAnswers = answers[1];
 
   
     const pdfdocument = new PDF();
     // Add the header for the "User Answers" section
     //Iterate on the first user answers
    pdfdocument.text("First User Answers");
-   for (const questionAnswer of firstAnswer.userAnswer) {
-    pdfdocument.text(`Question ID: ${questionAnswer.questionId}`);
-    pdfdocument.text(`Answer: ${questionAnswer.answer}`);
+   for (const questionAnswer of firstAnswers.userAnswer) {
+    const specificQuestion = questions.find((question) => question._id.equals(questionAnswer.questionId));
+    pdfdocument.text(`Question: ${specificQuestion.text} Answer: ${questionAnswer.answer}`);
+    
   }
+    pdfdocument.text(`-----------------`);
     // Add the header for the "Rater Answers" section
     pdfdocument.text("First Rater Answers");
     // Save the PDF documents to files
     const resultsFilename = `results-${userId}.pdf`;
     pdfdocument.pipe(fs.createWriteStream(resultsFilename));
     //Iterate on the raters first test
-    for (const rater of secondAnswer.raters) {
+    for (const rater of firstAnswers.raters) {
       for (const questionAnswer of rater.answers) {
-        pdfdocument.text(`Question ID: ${questionAnswer.questionId}`);
-        pdfdocument.text(`Answer: ${questionAnswer.answer}`);
+        const specificQuestion = questions.find((question) => question._id.equals(questionAnswer.questionId));
+        pdfdocument.text(`Question: ${specificQuestion.text} Answer: ${questionAnswer.answer}`);
       }
+      pdfdocument.text(`-----------------`);
     }
+    pdfdocument.addPage();
     //Iterate on the second user answers
     pdfdocument.text("Second User Answers");
-    for (const questionAnswer of thirdAnswer.userAnswer) {
-      pdfdocument.text(`Question ID: ${questionAnswer.questionId}`);
-      pdfdocument.text(`Answer: ${questionAnswer.answer}`);
+    for (const questionAnswer of secondAnswers.userAnswer) {
+      const specificQuestion = questions.find((question) => question._id.equals(questionAnswer.questionId));
+      pdfdocument.text(`Question: ${specificQuestion.text} Answer: ${questionAnswer.answer}`);
+      
     }
-    
+    pdfdocument.text(`-----------------`);
+    pdfdocument.text("Second Rater Answers");
+    for (const rater of secondAnswers.raters) {
+      for (const questionAnswer of rater.answers) {
+        const specificQuestion = questions.find((question) => question._id.equals(questionAnswer.questionId));
+        pdfdocument.text(`Question: ${specificQuestion.text} Answer: ${questionAnswer.answer}`);
+        
+      }
+      pdfdocument.text(`-----------------`);
+    }
     
 
 

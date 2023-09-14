@@ -14,5 +14,5 @@ router
   .post(authServices.protect, authServices.allowedTo("user"), saveAnswers);
 router.route("/countanswers").get(authServices.protect, authServices.allowedTo("user"),countAnswersAverage);
 router.route("/countanswersraters").get(authServices.protect, authServices.allowedTo("user"),countRatersAnswersAverage);
-router.route("/generatepdf").post(authServices.protect, authServices.allowedTo("user"),generatePDF);
+router.route("/generatepdf").get(authServices.protect, authServices.allowedTo("user"),generatePDF);
 module.exports = router;
