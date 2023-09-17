@@ -5,102 +5,75 @@ const Questions = require("../models/questionModel");
 const Answer = require("../models/answerModel");
 const fs=require('fs');
 const PDF = require('pdfkit');
+const AnswerModel = require("../models/answerModel");
 
 
-
-
-async function checkIfUserHasThreeRaters(userId) {
-  // Get the user document from the database
-  const answer = await Answer.findOne({ userId: userId });
-
-  // Check if the user document exists
-  if (answer) {
-    // Check if the user has already been rated by the rater
-    if (answer.raters.length == 3) {
-      // The user has already been rated by the rater
-      return true;
-    } else {
-      // The user has not yet been rated by the rater
-      return false;
-    }
-  } else {
-    return false;
-  }
-}
-
-
-async function checkIfUserHasAnswerBefore(userId) {
-  // Get the user document from the database
-  const answer = await Answer.findOne({ userId: userId });
-
-  // Check if the user document exists
-  if (answer) {
-    // Check if the user has an answer already
-    if (answer.userAnswer.length>=1) {
-      return true;
-    } else {
-      
-      return false;
-    }
-  } else {
-    return false;
-  }
-}
 //@desc Save answers to user
 //@route POST /api/v1/answer/saveanswers
 //@access private
+exports.saveRaterAnswers = asyncHandler(async (req, res) => {
+  const { answers, raterEmail, docId } = req.body;
+
+  try {
+    // 1. Find the rater document with the given docId and matching raterEmail
+    const rater = await Answer.findOne({ _id: docId, "raters.email": raterEmail });
+
+    // 2. Check if the rater document exists
+    if (!rater) {
+      return res.status(401).json({ status: "fail", msg: "Incorrect email or id" });
+    }
+      
+    // 3. Check if the user has already submitted their answers
+    const matchingRater = rater.raters.find(r => r.email === raterEmail);
+    if (matchingRater && matchingRater.answers.length!==0) {
+      return res.status(401).json({ status: "fail", msg: "You have submitted your answers before" });
+    }
+     // 4. Initialize the answers array for the matching rater if it's not defined
+     if (matchingRater && !matchingRater.answers) {
+      matchingRater.answers = [];
+    }
+
+    // 4. Update the answers for the matching rater
+    if (matchingRater) {
+      matchingRater.answers = answers;
+    }
+
+    // 5. Save the updated rater document
+    await rater.save();
+
+    return res.status(200).json({ status: "success", msg: "You have submitted your answers successfully" });
+  } catch (error) {
+    return res.status(500).json({ status: "error", msg: "Internal server error" });
+  }
+});
+
 exports.saveAnswers = asyncHandler(async (req, res) => {
-  const { answers,isRater, raterEmail} = req.body;
+  //validation : check if the id of doc contain rater email
+ const { answers,raterEmails} = req.body;
   const userId = req.user._id;
   //validation on raters' emails
-  if (isRater) {
-    const hasThreeRaters = await checkIfUserHasThreeRaters(userId);
-    if(hasThreeRaters){
-      const secondAnswerDocument = await Answer.findOne({ userId: userId }, { sort: { createdAt: 1 } }).skip(1);
-      await secondAnswerDocument.updateOne({ $push: { raters: { email: raterEmail, answers: answers } } });
-      return res.status(200).json({status:"Added a rater to the second answer successfully"});
-    }
-    else{
-        await Answer.updateOne({ userId: userId }, {
-          $push: {
-            raters: { email: raterEmail,answers:answers }
-          }
-        });
-      return res.status(200).json({status:"Added a rater successfully"});
-    }
-    // The user is a rater
-    
-  } else {
     const user = await User.findOne({_id:userId});
     if(user.quizTaken){
       return res.status(200).json({ status: "you cannot take test again" });
     }
     user.quizTaken=1;
     user.save();
-    const hasAnswer= await checkIfUserHasAnswerBefore(userId);
-    if (hasAnswer) {
-      const answer = new Answer({
+    //TODO add emails of raters 
+    const raters = raterEmails.map(email => ({
+      email: email.toLowerCase(),
+    }));
+    const answer = new Answer({
         userId,
         userAnswer: answers,
+        raters
       });
-      await answer.save();
-      return res.status(200).json({ status: "This user had answers before. Adding new answers to the array" });
-    }
-    
-
-    const answer = new Answer({
-      userId,
-      userAnswer: answers,
-    });
     await answer.save();
+    // const answerId=answer._id;
+    //TODO
+    // send to raters email with this answerId 
+  return res.status(200).json({ status: "you have submitted your answers successfully" });
   }
-
-  // Save the answer to the database
-
-  if (answers) {
-    res.status(200).json({ status: "successfully saved answers" });
-  }
-});
+);
 
 
 

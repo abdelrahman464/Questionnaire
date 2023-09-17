@@ -12,12 +12,6 @@ const questionSchema = mongoose.Schema(
           ref: 'Key',
           required: true,
         },
-        degree: {
-          type: Number,
-          min: 1,
-          max: 5,
-          required: true,
-        },
       }
 );
 
