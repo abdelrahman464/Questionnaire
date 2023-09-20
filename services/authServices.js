@@ -7,18 +7,19 @@ const ApiError = require("../utils/apiError");
 const sendEmail = require("../utils/sendEmail");
 const generateToken = require("../utils/generateToken");
 
-
 //@desc login
 //@route POST /api/v1/auth/login
 //@access public
 exports.login = asyncHandler(async (req, res, next) => {
   //1- check if password and emaail in the body
   //2- check if user exist & check if password is correct
-  console.log(req.body.password , req.body.email);
+  console.log(req.body.password, req.body.email);
   const user = await User.findOne({ email: req.body.email });
+  //check if he has taken quiz before
   if (!user || !(await bcrypt.compare(req.body.password, user.password))) {
     return next(new ApiError("incorrect password or email", 401));
   }
+ 
   //3- generate token
   const token = generateToken(user._id);
   //3- send response to client side
@@ -34,6 +35,9 @@ exports.loginUser = asyncHandler(async (req, res, next) => {
   const user = await User.findOne({ code: req.body.code });
   if (!user) {
     return next(new ApiError("user not found", 401));
+  }
+  if (user.quizTaken) {
+    return next(new ApiError("you have taken exam before", 401));
   }
   //3- generate token
   const token = generateToken(user._id);

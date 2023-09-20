@@ -1,7 +1,8 @@
 /* eslint-disable no-restricted-syntax */
 const { check } = require("express-validator");
 const validatorMiddleware = require("../../middlewares/validatorMiddleware");
-const{Answer}=require("../../models/answerModel")
+const { Answer } = require("../../models/answerModel");
+//--------------------------------------------------------------------------------------------//
 
 exports.userAnswerValidator = [
   check("answers")
@@ -12,8 +13,8 @@ exports.userAnswerValidator = [
   check("raterEmails")
     .notEmpty()
     .withMessage("raterEmails is required")
-    .isArray()
-    .withMessage("raterEmails must be an array")
+    .isArray({ min: 3, max: 3 })
+    .withMessage("raterEmails must be an array with exactly 3 names")
     .custom((raterEmails) => {
       // Validate each email in the raterEmails array
       // eslint-disable-next-line no-restricted-syntax
@@ -25,6 +26,12 @@ exports.userAnswerValidator = [
       }
       return true;
     }),
+  check("raterEmails")
+    .custom((raterEmails) => {
+      const uniqueEmails = new Set(raterEmails);
+      return uniqueEmails.size === raterEmails.length;
+    })
+    .withMessage("All Emails in raterEmails must be unique"),
 
   validatorMiddleware,
 ];
@@ -34,6 +41,8 @@ function isValidEmail(email) {
   const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
   return emailRegex.test(email);
 }
+//--------------------------------------------------------------------------------------------//
+
 exports.raterAnswerValidator = [
   check("answers")
     .notEmpty()
@@ -52,7 +61,7 @@ exports.raterAnswerValidator = [
     .withMessage("invalid id"),
   validatorMiddleware,
 ];
-
+//--------------------------------------------------------------------------------------------//
 exports.deleteAnswerValidator = [
   // Validation rules for deleting an answer
   check("id")
@@ -64,6 +73,8 @@ exports.deleteAnswerValidator = [
   // Middleware to handle validation errors
   validatorMiddleware,
 ];
+//--------------------------------------------------------------------------------------------//
+
 exports.getUserAnswerValidator = [
   // Validation rules for deleting an answer
   check("userId")
@@ -74,16 +85,21 @@ exports.getUserAnswerValidator = [
   check("status")
     .notEmpty()
     .withMessage("status is required")
-    .isIn([0,1])
+    .isIn([0, 1])
     .withMessage("un supported status only "),
 
   // Middleware to handle validation errors
   validatorMiddleware,
 ];
+//--------------------------------------------------------------------------------------------//
+
 exports.UserAnswersReportValidator = [
   check("userId").custom(async (userId) => {
-    const answerCount = await Answer.countDocuments({ userId });
-    return answerCount === 2;
+    console.log(userId)
+   
+    const answerCount = await Answer.find({userId:userId});
+    console.log(answerCount)
+    return answerCount.length === 2;
   }),
 
   // Check if the answers of raters in each document are not empty
@@ -101,5 +117,5 @@ exports.UserAnswersReportValidator = [
     return true; // All documents have non-empty `raters` answers arrays
   }),
 
-  validatorMiddleware
+  validatorMiddleware,
 ];

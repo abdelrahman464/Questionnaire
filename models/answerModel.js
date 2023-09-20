@@ -23,6 +23,10 @@ const answerSchema = mongoose.Schema({
     },
   ],
   raters:[{
+    name: {
+      type: String,
+      lowercase: true,
+    },
     email: {
       type: String,
       lowercase: true,
@@ -46,6 +50,7 @@ const answerSchema = mongoose.Schema({
   
 });
 
+answerSchema.index({ "raters.email": 1 }, { unique: true, sparse: true });
 //2- create model
 const AnswerModel = mongoose.model("Answer", answerSchema);
 

@@ -5,7 +5,6 @@ const Questions = require("../models/questionModel");
 const Answer = require("../models/answerModel");
 // const fs=require('fs');
 // const PDF = require('pdfkit');
-const AnswerModel = require("../models/answerModel");
 
 //@desc Save rater answers to user
 //@route POST /api/v1/answer/saveRateranswers
@@ -67,7 +66,7 @@ exports.saveRaterAnswers = asyncHandler(async (req, res) => {
 //@access private
 exports.saveAnswers = asyncHandler(async (req, res) => {
   //validation : check if the id of doc contain rater email
-  const { answers, raterEmails } = req.body;
+  const { answers, raterEmails,raterNames } = req.body;
   const userId = req.user._id;
   //validation on raters' emails
   const user = await User.findOne({ _id: userId });
@@ -77,9 +76,11 @@ exports.saveAnswers = asyncHandler(async (req, res) => {
   user.quizTaken = 1;
   user.save();
   //TODO add emails of raters
-  const raters = raterEmails.map((email) => ({
+  let raters = raterEmails.map((email, index) => ({
     email: email.toLowerCase(),
+    name: raterNames[index], // Assuming raterNames has the corresponding names
   }));
+ 
   const answer = new Answer({
     userId,
     userAnswer: answers,
@@ -93,58 +94,6 @@ exports.saveAnswers = asyncHandler(async (req, res) => {
     .status(200)
     .json({ status: "you have submitted your answers successfully" });
 });
-
-// exports.countAnswersAverage = asyncHandler(async (req, res) => {
-//   const result = [];
-
-//   const userId = req.user._id;
-//   // Get all sections
-//   const sections = await Key.find();
-//   // Loop on each section
-//   // eslint-disable-next-line no-restricted-syntax
-//   for (const section of sections) {
-//     // Find all answers for the user in the section
-//     // eslint-disable-next-line no-await-in-loop
-//     const answers = await Answer.findOne(
-//       {
-//         userId,
-//         questionId: {
-//           section: section.id,
-//         },
-//       }
-//     );
-//     // Check if there are answers
-//     if(!answers){
-//       return res.status(404).json({status:`user didn't take the quiz`})
-//     }
-//     // Calculate the total answerEvaluation
-//     const answersArray = Array.from(answers);
-//       const totalAnswerevaluation = answersArray.reduce((acc, answer) => {
-//         acc += answer.userAnswer.reduce(
-//           // eslint-disable-next-line no-shadow
-//           (acc, answer) => {acc + answer.answer
-//           return acc;
-//           },0
-//         );
-//         return acc;
-//       }, 0);
-
-//       // Calculate the average answerevaluation
-//       const averageAnswerevaluation =
-//         totalAnswerevaluation / answers.userAnswer.length;
-
-//       // Add the average answerevaluation to the result
-//       result.push({
-//         sectionId: section.id,
-//         averageAnswerevaluation,
-//       });
-
-//   }
-
-//   // Return the result
-//   res.json(result);
-// });
-
 //@desc Count The average answers for a user in each section
 //@route GET /api/v1/answer/countanswers
 //@access private
@@ -438,7 +387,7 @@ exports.getUserAnswers = asyncHandler(async (req, res) => {
     // Loop through the user's answers
     userAnswers[status].userAnswer.forEach((userAnswer) => {
       const question = userAnswer.questionId;
-      console.log(question)
+      
       if (!question) {
         console.error("Question not found for user answer:", userAnswer);
         return; // Skip this answer and continue with the next one
@@ -455,12 +404,13 @@ exports.getUserAnswers = asyncHandler(async (req, res) => {
         };
       }
     });
-    
+    // return res.json(userAnswers[status])
     // return res.json(response)
     // Loop through the raters' answers for the current question
     userAnswers[status].raters.forEach((rater) => {
       const raterEmail = rater.email;
-      // const raterName = rater.name;
+      const raterName = rater.name;
+      console.log(rater.name)
 
       rater.answers.forEach((raterAnswer) => {
         const questionId = raterAnswer.questionId.toString();
@@ -472,7 +422,7 @@ exports.getUserAnswers = asyncHandler(async (req, res) => {
           // Add the rater's answer to the current question's object
           response[questionId].raters.push({
             email: raterEmail,
-            // name:raterName,
+            name:raterName,
             answer: raterAnswerValue,
           });
         }
