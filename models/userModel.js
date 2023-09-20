@@ -31,12 +31,7 @@ const userShcema = new mongoose.Schema(
       type: String,
       // required: [true, "password required"],
       // minlength: [8, "too short Password"],
-    },
-    ratersEmails:[
-      { 
-      raterEmail:String,
-      }
-    ]
+    }
   ,
     passwordChangedAt: Date,
     passwordResetCode: String,

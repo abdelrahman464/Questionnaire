@@ -6,16 +6,28 @@ const {
   countAnswersAverage,
   countRatersAnswersAverage,
   generatePDF,
+  getUserAnswersReport,
+  getUserAnswers,
 } = require("../services/answerService");
+
+const {
+  userAnswerValidator,
+  raterAnswerValidator,
+  getUserAnswerValidator,
+  UserAnswersReportValidator,
+} = require("../utils/validators/answerValidator");
 
 const router = express.Router();
 
 router
   .route("/saveanswers")
-  .post(authServices.protect, authServices.allowedTo("user"), saveAnswers);
-router
-  .route("/saveRateranswers")
-  .post(saveRaterAnswers);
+  .post(
+    authServices.protect,
+    authServices.allowedTo("user"),
+    userAnswerValidator,
+    saveAnswers
+  );
+router.route("/saveRateranswers").post(raterAnswerValidator, saveRaterAnswers);
 router
   .route("/countanswers")
   .get(
@@ -33,4 +45,21 @@ router
 router
   .route("/generatepdf")
   .get(authServices.protect, authServices.allowedTo("user"), generatePDF);
+router
+  .route("/getUserAnswersReport/:keyId/:userId")
+  .get(
+    authServices.protect,
+    authServices.allowedTo("user", "admin"),
+    // UserAnswersReportValidator,
+    getUserAnswersReport
+  );
+router
+  .route("/getUserAnswers/:userId/:status")
+  .get(
+    authServices.protect,
+    authServices.allowedTo("user", "admin"),
+    getUserAnswerValidator,
+    getUserAnswers
+  );
+
 module.exports = router;
