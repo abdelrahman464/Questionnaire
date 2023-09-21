@@ -31,7 +31,7 @@ exports.userAnswerValidator = [
       const uniqueEmails = new Set(raterEmails);
       return uniqueEmails.size === raterEmails.length;
     })
-    .withMessage("All Emails in raterEmails must be unique"),
+    .withMessage("يجب ان تكون ايميلات المقيمين غير متكرره"),
 
   validatorMiddleware,
 ];
@@ -113,7 +113,6 @@ exports.UserAnswersReportValidator = [
       }
       for (const userAnswer of userAnswers) {
         for (const rater of userAnswer.raters) {
-          console.log(rater.answers);
           if (rater.answers.length === 0) {
             return Promise.reject(
               new Error("One or more of raters doesn't have answer")

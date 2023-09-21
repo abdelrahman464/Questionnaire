@@ -18,7 +18,7 @@ exports.saveRaterAnswers = asyncHandler(async (req, res) => {
       _id: docId,
       "raters.email": raterEmail,
     });
-
+    
     // 2. Check if the rater document exists
     if (!rater) {
       return res
@@ -354,7 +354,7 @@ exports.getUserAnswersReport = asyncHandler(async (req, res) => {
         after: {
           user: userAnswerAfter ? userAnswerAfter.answer : null,
           raters: averageRaterAnswers[questionId].after,
-        },
+        }
       };
     });
     return res.status(200).json(result);
@@ -384,13 +384,13 @@ exports.getUserAnswers = asyncHandler(async (req, res) => {
     }
     // Create a response object to store the formatted answers
     const response = {};
+    const response2=[];
 
     // Loop through the user's answers
     userAnswers[status].userAnswer.forEach((userAnswer) => {
       const question = userAnswer.questionId;
       
       if (!question) {
-        console.error("Question not found for user answer:", userAnswer);
         return; // Skip this answer and continue with the next one
       }
       const questionText = question.text;
@@ -426,12 +426,13 @@ exports.getUserAnswers = asyncHandler(async (req, res) => {
             name:raterName,
             answer: raterAnswerValue,
           });
+          response2.push(response[questionId]);
         }
       });
     });
 
     // Return the formatted response
-    res.json(response);
+    res.json(response2);
   } catch (error) {
     console.error("Error: ", error);
     throw error;

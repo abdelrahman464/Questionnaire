@@ -49,7 +49,7 @@ router
   .route("/getUserAnswersReport/:keyId/:userId")
   .get(
     authServices.protect,
-    authServices.allowedTo("admin"),
+    authServices.allowedTo("user","admin"),
     UserAnswersReportValidator,
     getUserAnswersReport
   );
