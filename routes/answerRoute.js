@@ -49,15 +49,15 @@ router
   .route("/getUserAnswersReport/:keyId/:userId")
   .get(
     authServices.protect,
-    authServices.allowedTo("user", "admin"),
-    // UserAnswersReportValidator,
+    authServices.allowedTo("admin"),
+    UserAnswersReportValidator,
     getUserAnswersReport
   );
 router
   .route("/getUserAnswers/:userId/:status")
   .get(
     authServices.protect,
-    authServices.allowedTo("user", "admin"),
+    authServices.allowedTo("admin"),
     getUserAnswerValidator,
     getUserAnswers
   );

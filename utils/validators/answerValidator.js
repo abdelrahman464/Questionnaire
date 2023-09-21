@@ -1,7 +1,7 @@
 /* eslint-disable no-restricted-syntax */
 const { check } = require("express-validator");
 const validatorMiddleware = require("../../middlewares/validatorMiddleware");
-const { Answer } = require("../../models/answerModel");
+const Answer = require("../../models/answerModel");
 //--------------------------------------------------------------------------------------------//
 
 exports.userAnswerValidator = [
@@ -94,28 +94,45 @@ exports.getUserAnswerValidator = [
 //--------------------------------------------------------------------------------------------//
 
 exports.UserAnswersReportValidator = [
-  check("userId").custom(async (userId) => {
-    console.log(userId)
-   
-    const answerCount = await Answer.find({userId:userId});
-    console.log(answerCount)
-    return answerCount.length === 2;
-  }),
+  check("userId")
+    .isMongoId()
+    .withMessage("Hello")
+    .custom(async (userId) => {
+      // console.log(userId);
 
-  // Check if the answers of raters in each document are not empty
-  check("userId").custom(async (userId) => {
-    const userAnswers = await Answer.find({ userId });
+      const answerCount = await Answer.find({ userId: userId });
+      // console.log(answerCount);
+      return answerCount.length === 2;
+    })
 
-    for (const userAnswer of userAnswers) {
-      for (const rater of userAnswer.raters) {
-        if (rater.answers.length === 0) {
-          return false; // At least one document has an empty `raters` answers array
+    // Check if the answers of raters in each document are not empty
+    .custom(async (userId) => {
+      const userAnswers = await Answer.find({ userId });
+      if (!userAnswers.length === 2) {
+        return Promise.reject(new Error("You have to take quiz twice"));
+      }
+      for (const userAnswer of userAnswers) {
+        for (const rater of userAnswer.raters) {
+          console.log(rater.answers);
+          if (rater.answers.length === 0) {
+            return Promise.reject(
+              new Error("One or more of raters doesn't have answer")
+            );
+          }
         }
       }
-    }
 
-    return true; // All documents have non-empty `raters` answers arrays
-  }),
-
+      return true; // All documents have non-empty `raters` answers arrays
+    }),
+  // .custom((userId, { req }) => {
+  //   if (
+  //     userId.toString() !== req.user._id.toString() &&
+  //     req.user.role !== "admin"
+  //   ) {
+  //     return Promise.reject(
+  //       new Error("Your are not allowed to perform this action")
+  //     );
+  //   }
+  // }),
   validatorMiddleware,
 ];

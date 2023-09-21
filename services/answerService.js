@@ -270,12 +270,13 @@ exports.getUserAnswersReport = asyncHandler(async (req, res) => {
 
     // Find the user's answers for the given key
     const userAnswers = await Answer.find({
-      userId: "6508d9c47c4262286382fddf",
+      userId: userId,
       "userAnswer.questionId": { $in: questions.map((q) => q._id) },
     }).populate("userId");
 
     // Find the raters' answers for the given key
     const raterAnswers = await Answer.find({
+      userId: userId,
       "raters.answers.questionId": { $in: questions.map((q) => q._id) },
     });
     // return res.json({"assx":userAnswers,"ratersssss":raterAnswers})
@@ -358,7 +359,7 @@ exports.getUserAnswersReport = asyncHandler(async (req, res) => {
     });
     return res.status(200).json(result);
   } catch (error) {
-    return res.status(400).json({status:`faild`,msg:`user should take the quiz twice and all arters should submit their answers in both times`})
+    return res.status(400).json({status:`faild`,msg:`user should take the quiz twice and all raters should submit their answers in both times`})
     
   }
 });
