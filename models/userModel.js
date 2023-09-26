@@ -19,10 +19,6 @@ const userShcema = new mongoose.Schema(
       type: String,
       minlength: [8, "too short code"],
     },
-    rateCode: {
-      type: String,
-      minlength: [8, "too short code"],
-    },
     quizTaken: {
       type: Boolean,
       default:0
@@ -54,13 +50,13 @@ userShcema.pre("save", async function (next) {
   this.password = await bcrypt.hash(this.password, 12);
   next();
 });
-userShcema.pre("save", async function (next) {
-  //if code field is not modified go to next middleware
-  if (!this.isModified("code")) return next();
-  // Hashing user code
-  this.code = await bcrypt.hash(this.code, 12);
-  next();
-});
+// userShcema.pre("save", async function (next) {
+//   //if code field is not modified go to next middleware
+//   if (!this.isModified("code")) return next();
+//   // Hashing user code
+//   this.code = await bcrypt.hash(this.code, 12);
+//   next();
+// });
 userShcema.pre("save", async function (next) {
   //if rateCode field is not modified go to next middleware
   if (!this.isModified("rateCode")) return next();

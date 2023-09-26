@@ -36,9 +36,6 @@ exports.loginUser = asyncHandler(async (req, res, next) => {
   if (!user) {
     return next(new ApiError("user not found", 401));
   }
-  if (user.quizTaken) {
-    return next(new ApiError("you have taken exam before", 401));
-  }
   //3- generate token
   const token = generateToken(user._id);
   //3- send response to client side

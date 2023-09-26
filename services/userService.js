@@ -18,29 +18,11 @@ exports.getUser = factory.getOne(User);
 //@desc generate code for user
 //@route POST /api/v1/users
 //@access private
-function generateNumber() {
-  const min = 100000000000;
-  const max = 999999999999;
-  const randomNum = Math.floor(Math.random() * (max - min + 1)) + min;
-  return randomNum;
-}
-//----------------------------------------------------------------------------------------//
-// Function to generate a unique rateCode
- function generateUniqueCode(field) {
-  // Generate a random rateCode (you can customize this logic as needed)
-  const randomCode = generateNumber();
-
-  return User.findOne({ field: randomCode })
-    .then(existingUser => {
-      if (existingUser) {
-        // If the generated code already exists, recursively call the function again
-        return generateUniqueCode(field);
-      }
-      return randomCode;
-    })
-    .catch(error => {
-      throw error;
-    });
+function generateNumber(char) {
+  const currentYear = new Date().getFullYear();
+  const randomNumbers = Math.floor(Math.random() * 1000000000); // Generate 8 random numbers
+  const result = `${char}${currentYear}${randomNumbers.toString().padStart(8, '0')}`;
+  return result;
 }
 
 //@desc create new user
@@ -49,13 +31,12 @@ function generateNumber() {
 
 exports.createUser = asyncHandler(async (req, res, next) => {
   //1-create user
-  const code =  generateNumber();
-  const rateCode = generateNumber();
+  const code =  generateNumber(req.body.name.charAt(0).toUpperCase());
+  console.log(code) 
   const user = await User.create({
     name: req.body.name,
     email: req.body.email,
     code,
-    rateCode,
     ratersEmails: req.body.ratersEmails
   });
   res.status(201).json({ data: user });

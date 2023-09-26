@@ -81,7 +81,14 @@ exports.getUserAnswerValidator = [
     .notEmpty()
     .withMessage("userId is required")
     .isMongoId()
-    .withMessage("Invalid userId format"),
+    .withMessage("Invalid userId format")
+    .custom(async (userId, { req }) => {
+      if (userId !== req.user._id.toString() && req.user.role !== "admin") {
+        return Promise.reject(
+          new Error("You are not allowed to view this answer report")
+        );
+      }
+    }),
   check("status")
     .notEmpty()
     .withMessage("status is required")
@@ -97,9 +104,14 @@ exports.UserAnswersReportValidator = [
   check("userId")
     .isMongoId()
     .withMessage("Hello")
-    .custom(async (userId) => {
+    .custom(async (userId,{req}) => {
       // console.log(userId);
-
+      
+      if (userId !== req.user._id.toString() && req.user.role !== "admin") {
+        return Promise.reject(
+          new Error("You are not allowed to view this report")
+        );
+      }
       const answerCount = await Answer.find({ userId: userId });
       // console.log(answerCount);
       return answerCount.length === 2;

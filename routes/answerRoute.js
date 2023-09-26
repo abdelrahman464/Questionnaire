@@ -57,7 +57,7 @@ router
   .route("/getUserAnswers/:userId/:status")
   .get(
     authServices.protect,
-    authServices.allowedTo("admin"),
+    authServices.allowedTo("admin","user"),
     getUserAnswerValidator,
     getUserAnswers
   );
