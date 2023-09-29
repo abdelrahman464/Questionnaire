@@ -8,6 +8,7 @@ const {
   generatePDF,
   getUserAnswersReport,
   getUserAnswers,
+  getUserAnswersReportTotal,
 } = require("../services/answerService");
 
 const {
@@ -49,15 +50,23 @@ router
   .route("/getUserAnswersReport/:keyId/:userId")
   .get(
     authServices.protect,
-    authServices.allowedTo("user","admin"),
+    authServices.allowedTo("user", "admin"),
     UserAnswersReportValidator,
     getUserAnswersReport
+  );
+router
+  .route("/getUserAnswersReportTotal/:userId")
+  .get(
+    authServices.protect,
+    authServices.allowedTo("user", "admin"),
+    UserAnswersReportValidator,
+    getUserAnswersReportTotal
   );
 router
   .route("/getUserAnswers/:userId/:status")
   .get(
     authServices.protect,
-    authServices.allowedTo("admin","user"),
+    authServices.allowedTo("admin", "user"),
     getUserAnswerValidator,
     getUserAnswers
   );
