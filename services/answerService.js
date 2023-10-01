@@ -559,6 +559,145 @@ exports.getUserAnswers = asyncHandler(async (req, res) => {
 //     });
 //   }
 // });
+// exports.getUserAnswersReportTotal = asyncHandler(async (req, res) => {
+//   try {
+//     const userId = req.params.userId;
+
+//     // Find all keys
+//     const keys = await Key.find();
+
+//     // Initialize an array to store the results for all keys and questions
+//     const results = [];
+
+//     // Iterate over each key
+//     for (const key of keys) {
+//       // Find all questions for the current key
+//       const questions = await Questions.find({ section: key._id });
+
+//       // Find the user's answers for the current key
+//       const userAnswers = await Answer.find({
+//         userId: userId,
+//         "userAnswer.questionId": { $in: questions.map((q) => q._id) },
+//       });
+
+//       // Find the raters' answers for the current key
+//       const raterAnswers = await Answer.find({
+//         userId: userId,
+//         "raters.answers.questionId": { $in: questions.map((q) => q._id) },
+//       });
+
+//       // Create a map to store the average raters' answers for each question
+//       const averageRaterAnswers = {};
+
+//       // Initialize the averageRaterAnswers map
+//       questions.forEach((question) => {
+//         averageRaterAnswers[question._id] = {
+//           before: 0,
+//           after: 0,
+//         };
+//       });
+
+//       // Calculate the average answers of raters for each question
+//       raterAnswers[0].raters.forEach((rater) => {
+//         rater.answers.forEach((ans) => {
+//           const questionId = ans.questionId.toString();
+
+//           // Ensure there's an entry for this questionId
+//           if (!averageRaterAnswers[questionId]) {
+//             averageRaterAnswers[questionId] = {
+//               before: 0,
+//               after: 0,
+//             };
+//           }
+
+//           averageRaterAnswers[questionId].before += ans.answer;
+//         });
+//       });
+
+//       // Calculate the average by dividing by the number of raters (assuming 3 raters)
+//       questions.forEach((question) => {
+//         averageRaterAnswers[question._id].before /= 3;
+//       });
+
+//       // Calculate the user's second answers and update the averageRaterAnswers
+//       raterAnswers[1].raters.forEach((rater) => {
+//         rater.answers.forEach((ans) => {
+//           const questionId = ans.questionId.toString();
+
+//           // Ensure there's an entry for this questionId
+//           if (!averageRaterAnswers[questionId]) {
+//             averageRaterAnswers[questionId] = {
+//               before: 0,
+//               after: 0,
+//             };
+//           }
+
+//           averageRaterAnswers[questionId].after += ans.answer;
+//         });
+//       });
+
+//       // Calculate the average for the user's second answers
+//       questions.forEach((question) => {
+//         averageRaterAnswers[question._id].after /= 3; // Assuming each user takes the quiz twice
+//       });
+
+//       // Calculate the differences for each question and the total difference for the key
+//       const keyResult = questions.map((question) => {
+//         const questionId = question._id.toString();
+//         const userAnswerBefore = userAnswers[0]?.userAnswer.find((ans) =>
+//           ans.questionId.equals(question._id)
+//         );
+//         const userAnswerAfter = userAnswers[1]?.userAnswer.find((ans) =>
+//           ans.questionId.equals(question._id)
+//         );
+
+//         // Calculate differences
+//         const userDiff = userAnswerAfter ? userAnswerAfter.answer - userAnswerBefore.answer : null;
+//         const ratersDiff = averageRaterAnswers[questionId].after - averageRaterAnswers[questionId].before;
+
+//         return {
+//           question: question.text,
+//           before: {
+//             user: userAnswerBefore ? userAnswerBefore.answer : null,
+//             raters: averageRaterAnswers[questionId].before,
+//           },
+//           after: {
+//             user: userAnswerAfter ? userAnswerAfter.answer : null,
+//             raters: averageRaterAnswers[questionId].after,
+//           },
+//           avg: {
+//             user: userDiff,
+//             raters: ratersDiff,
+//           }
+//         };
+//       });
+
+//       // Calculate the total differences for user and raters across all questions
+//       const totalUserDiff = keyResult.reduce((total, question) => {
+//         if (question.avg.user !== null) {
+//           total.user += question.avg.user;
+//         }
+//         if (question.avg.raters !== null) {
+//           total.raters += question.avg.raters;
+//         }
+//         return total;
+//       }, { user: 0, raters: 0 });
+
+//       results.push({
+//         key: key.name, // You can use any key identifier here
+//         questions: keyResult,
+//         totalDifference: totalUserDiff,
+//       });
+//     }
+
+//     return res.status(200).json(results);
+//   } catch (error) {
+//     return res.status(400).json({
+//       status: "failed",
+//       msg: "User should take the quiz twice, and all raters should submit their answers in both times"
+//     });
+//   }
+// });
 exports.getUserAnswersReportTotal = asyncHandler(async (req, res) => {
   try {
     const userId = req.params.userId;
@@ -672,8 +811,8 @@ exports.getUserAnswersReportTotal = asyncHandler(async (req, res) => {
         };
       });
 
-      // Calculate the total differences for user and raters across all questions
-      const totalUserDiff = keyResult.reduce((total, question) => {
+       // Calculate the total differences for user and raters across all questions
+       const totalUserDiff = keyResult.reduce((total, question) => {
         if (question.avg.user !== null) {
           total.user += question.avg.user;
         }
@@ -683,9 +822,34 @@ exports.getUserAnswersReportTotal = asyncHandler(async (req, res) => {
         return total;
       }, { user: 0, raters: 0 });
 
+      // Calculate the graph section for this key
+      const graph = {
+        userBefore: keyResult.reduce((total, question) => {
+          if (question.before.user !== null) {
+            total += question.before.user;
+          }
+          return total;
+        }, 0) / (questions.length),
+        userAfter: keyResult.reduce((total, question) => {
+          if (question.after.user !== null) {
+            total += question.after.user;
+          }
+          return total;
+        }, 0) / (questions.length),
+        raterBefore: keyResult.reduce((total, question) => {
+          total += question.before.raters;
+          return total;
+        }, 0) / questions.length,
+        raterAfter: keyResult.reduce((total, question) => {
+          total += question.after.raters;
+          return total;
+        }, 0) / questions.length,
+      };
+
       results.push({
         key: key.name, // You can use any key identifier here
         questions: keyResult,
+        graph: graph,
         totalDifference: totalUserDiff,
       });
     }
