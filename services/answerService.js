@@ -18,7 +18,7 @@ exports.saveRaterAnswers = asyncHandler(async (req, res) => {
       _id: docId,
       "raters.email": raterEmail,
     });
-    
+
     // 2. Check if the rater document exists
     if (!rater) {
       return res
@@ -29,12 +29,10 @@ exports.saveRaterAnswers = asyncHandler(async (req, res) => {
     // 3. Check if the user has already submitted their answers
     const matchingRater = rater.raters.find((r) => r.email === raterEmail);
     if (matchingRater && matchingRater.answers.length !== 0) {
-      return res
-        .status(401)
-        .json({
-          status: "fail",
-          msg: "You have submitted your answers before",
-        });
+      return res.status(401).json({
+        status: "fail",
+        msg: "You have submitted your answers before",
+      });
     }
     // 4. Initialize the answers array for the matching rater if it's not defined
     if (matchingRater && !matchingRater.answers) {
@@ -49,12 +47,10 @@ exports.saveRaterAnswers = asyncHandler(async (req, res) => {
     // 5. Save the updated rater document
     await rater.save();
 
-    return res
-      .status(200)
-      .json({
-        status: "success",
-        msg: "You have submitted your answers successfully",
-      });
+    return res.status(200).json({
+      status: "success",
+      msg: "You have submitted your answers successfully",
+    });
   } catch (error) {
     return res
       .status(500)
@@ -66,7 +62,7 @@ exports.saveRaterAnswers = asyncHandler(async (req, res) => {
 //@access private
 exports.saveAnswers = asyncHandler(async (req, res) => {
   //validation : check if the id of doc contain rater email
-  const { answers, raterEmails,raterNames } = req.body;
+  const { answers, raterEmails, raterNames } = req.body;
   const userId = req.user._id;
   //validation on raters' emails
   const user = await User.findOne({ _id: userId });
@@ -80,7 +76,7 @@ exports.saveAnswers = asyncHandler(async (req, res) => {
     email: email.toLowerCase(),
     name: raterNames[index], // Assuming raterNames has the corresponding names
   }));
- 
+
   const answer = new Answer({
     userId,
     userAnswer: answers,
@@ -264,7 +260,7 @@ exports.generatePDF = asyncHandler(async (req, res) => {
 //--------------------------------------------------------------------------------------//
 exports.getUserAnswersReport = asyncHandler(async (req, res) => {
   try {
-    const { keyId,userId } = req.params;
+    const { keyId, userId } = req.params;
     // Find all questions for the given key
     const questions = await Questions.find({ section: keyId });
 
@@ -354,20 +350,24 @@ exports.getUserAnswersReport = asyncHandler(async (req, res) => {
         after: {
           user: userAnswerAfter ? userAnswerAfter.answer : null,
           raters: averageRaterAnswers[questionId].after,
-        }
+        },
       };
     });
     return res.status(200).json(result);
   } catch (error) {
-    return res.status(400).json({status:`faild`,msg:`user should take the quiz twice and all raters should submit their answers in both times`})
-    
+    return res
+      .status(400)
+      .json({
+        status: `faild`,
+        msg: `user should take the quiz twice and all raters should submit their answers in both times`,
+      });
   }
 });
 //--------------------------------------------------------------------------------------//
 //first second ?  ?  ?  ?
 exports.getUserAnswers = asyncHandler(async (req, res) => {
   try {
-    const { userId,status } = req.params; // Assuming userId is passed as a parameter
+    const { userId, status } = req.params; // Assuming userId is passed as a parameter
     const user = await User.findById(userId); // Retrieve the user
 
     if (!user) {
@@ -378,18 +378,20 @@ exports.getUserAnswers = asyncHandler(async (req, res) => {
     const userAnswers = await Answer.find({ userId })
       .populate("userAnswer.questionId")
       .exec();
-      //check if user took the exam 
-    if(!userAnswers[status]){
-      return res.status(400).json({status:`faild`,'msg':`user didn't take the quiz`});
+    //check if user took the exam
+    if (!userAnswers[status]) {
+      return res
+        .status(400)
+        .json({ status: `faild`, msg: `user didn't take the quiz` });
     }
     // Create a response object to store the formatted answers
     const response = {};
-    const response2=[];
+    const response2 = [];
 
     // Loop through the user's answers
     userAnswers[status].userAnswer.forEach((userAnswer) => {
       const question = userAnswer.questionId;
-      
+
       if (!question) {
         return; // Skip this answer and continue with the next one
       }
@@ -411,7 +413,7 @@ exports.getUserAnswers = asyncHandler(async (req, res) => {
     userAnswers[status].raters.forEach((rater) => {
       const raterEmail = rater.email;
       const raterName = rater.name;
-      console.log(rater.name)
+      console.log(rater.name);
 
       rater.answers.forEach((raterAnswer) => {
         const questionId = raterAnswer.questionId.toString();
@@ -423,7 +425,7 @@ exports.getUserAnswers = asyncHandler(async (req, res) => {
           // Add the rater's answer to the current question's object
           response[questionId].raters.push({
             email: raterEmail,
-            name:raterName,
+            name: raterName,
             answer: raterAnswerValue,
           });
           response2.push(response[questionId]);
@@ -791,8 +793,12 @@ exports.getUserAnswersReportTotal = asyncHandler(async (req, res) => {
         );
 
         // Calculate differences
-        const userDiff = userAnswerAfter ? userAnswerAfter.answer - userAnswerBefore.answer : null;
-        const ratersDiff = averageRaterAnswers[questionId].after - averageRaterAnswers[questionId].before;
+        const userDiff = userAnswerAfter
+          ? userAnswerAfter.answer - userAnswerBefore.answer
+          : null;
+        const ratersDiff =
+          averageRaterAnswers[questionId].after -
+          averageRaterAnswers[questionId].before;
 
         return {
           question: question.text,
@@ -807,47 +813,55 @@ exports.getUserAnswersReportTotal = asyncHandler(async (req, res) => {
           avg: {
             user: userDiff,
             raters: ratersDiff,
-          }
+          },
         };
       });
 
-       // Calculate the total differences for user and raters across all questions
-       const totalUserDiff = keyResult.reduce((total, question) => {
-        if (question.avg.user !== null) {
-          total.user += question.avg.user;
-        }
-        if (question.avg.raters !== null) {
-          total.raters += question.avg.raters;
-        }
-        return total;
-      }, { user: 0, raters: 0 });
+      // Calculate the total differences for user and raters across all questions
+      const totalUserDiff = keyResult.reduce(
+        (total, question) => {
+          if (question.avg.user !== null) {
+            total.user += question.avg.user;
+          }
+          if (question.avg.raters !== null) {
+            total.raters += question.avg.raters;
+          }
+          return total;
+        },
+        { user: 0, raters: 0 }
+      );
 
       // Calculate the graph section for this key
       const graph = {
-        userBefore: keyResult.reduce((total, question) => {
-          if (question.before.user !== null) {
-            total += question.before.user;
-          }
-          return total;
-        }, 0) / (questions.length),
-        userAfter: keyResult.reduce((total, question) => {
-          if (question.after.user !== null) {
-            total += question.after.user;
-          }
-          return total;
-        }, 0) / (questions.length),
-        raterBefore: keyResult.reduce((total, question) => {
-          total += question.before.raters;
-          return total;
-        }, 0) / questions.length,
-        raterAfter: keyResult.reduce((total, question) => {
-          total += question.after.raters;
-          return total;
-        }, 0) / questions.length,
+        userBefore:
+          keyResult.reduce((total, question) => {
+            if (question.before.user !== null) {
+              total += question.before.user;
+            }
+            return total;
+          }, 0) / questions.length,
+        userAfter:
+          keyResult.reduce((total, question) => {
+            if (question.after.user !== null) {
+              total += question.after.user;
+            }
+            return total;
+          }, 0) / questions.length,
+        raterBefore:
+          keyResult.reduce((total, question) => {
+            total += question.before.raters;
+            return total;
+          }, 0) / questions.length,
+        raterAfter:
+          keyResult.reduce((total, question) => {
+            total += question.after.raters;
+            return total;
+          }, 0) / questions.length,
       };
 
       results.push({
         key: key.name, // You can use any key identifier here
+        desc: key.desc ? key.desc : null,
         questions: keyResult,
         graph: graph,
         totalDifference: totalUserDiff,
@@ -858,7 +872,7 @@ exports.getUserAnswersReportTotal = asyncHandler(async (req, res) => {
   } catch (error) {
     return res.status(400).json({
       status: "failed",
-      msg: "User should take the quiz twice, and all raters should submit their answers in both times"
+      msg: "User should take the quiz twice, and all raters should submit their answers in both times",
     });
   }
 });

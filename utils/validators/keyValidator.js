@@ -11,6 +11,11 @@ exports.createKeyValidator = [
     .withMessage("too short key name")
     .isLength({ max: 48 })
     .withMessage("too long key name"),
+  check("desc")
+    .notEmpty()
+    .withMessage("desc required")
+    .isLength({ min: 3 })
+    .withMessage("too short desc"),
   validatorMiddleware,
 ];
 
@@ -35,6 +40,11 @@ exports.updateKeyValidator = [
     .withMessage("too short key name")
     .isLength({ max: 48 })
     .withMessage("too long key name"),
+  check("desc")
+    .notEmpty()
+    .withMessage("desc required")
+    .isLength({ min: 3 })
+    .withMessage("too short desc"),
   check("id")
     .notEmpty()
     .withMessage("Key ID is required")
