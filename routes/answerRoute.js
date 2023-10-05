@@ -3,9 +3,7 @@ const authServices = require("../services/authServices");
 const {
   saveAnswers,
   saveRaterAnswers,
-  countAnswersAverage,
-  countRatersAnswersAverage,
-  generatePDF,
+
   getUserAnswersReport,
   getUserAnswers,
   getUserAnswersReportTotal,
@@ -24,28 +22,12 @@ router
   .route("/saveanswers")
   .post(
     authServices.protect,
-    authServices.allowedTo("user"),
+    authServices.allowedTo("user","admin"),
     userAnswerValidator,
     saveAnswers
   );
 router.route("/saveRateranswers").post(raterAnswerValidator, saveRaterAnswers);
-router
-  .route("/countanswers")
-  .get(
-    authServices.protect,
-    authServices.allowedTo("user"),
-    countAnswersAverage
-  );
-router
-  .route("/countanswersraters")
-  .get(
-    authServices.protect,
-    authServices.allowedTo("user"),
-    countRatersAnswersAverage
-  );
-router
-  .route("/generatepdf")
-  .get(authServices.protect, authServices.allowedTo("user"), generatePDF);
+
 router
   .route("/getUserAnswersReport/:keyId/:userId")
   .get(

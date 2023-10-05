@@ -3,9 +3,8 @@ const bcrypt = require("bcryptjs");
 const ApiError = require("../utils/apiError");
 const factory = require("./handllerFactory");
 const User = require("../models/userModel");
-const Answer = require("../models/answerModel");
 const generateToken = require("../utils/generateToken");
-const sendEmail = require("../utils/sendEmail");
+
 
 //@desc get list of users
 //@route GET /api/v1/users
@@ -144,44 +143,7 @@ exports.addRatersEmail = asyncHandler(async (req, res, next) => {
 //@access public/protect
 //@params  code='ZMxs'
 
-exports.SendEmailsToRaters = asyncHandler(async (req, res, next, answerId) => {
-  // const user = await User.findOne({code:req.user.Code});
-  // if (!user) {
-  //   return next(ApiError("live not found", 404));
-  // }
-  const answer = await Answer.findOne({ _id: answerId }).populate(
-    "userId",
-    "email"
-  ); // Populate the 'userId' field with 'email'
 
-  if (!answer) {
-    return next(ApiError("Answer not found", 404));
-  }
-  const url = `${process.env.RATERS_URL}?code=${answerId}`;
-  const userEmail = answer.userId.email;
-  answer.raters.forEach(async (rater) => {
-    const raterEmail = rater.email;
-
-    try {
-      let emailMessage = "";
-
-      emailMessage = `Hi ${raterEmail} 
-                            \n your friend ${userEmail} invited you to
-                            \n to rate him in a quick Quiz
-                            \n here is the link ${url}`;
-
-      await sendEmail({
-        to: raterEmail,
-        subject: `rate your frined ${userEmail}`,
-        text: emailMessage,
-      });
-    } catch (err) {
-      return next(new ApiError("there is a problem with sending Email", 500));
-    }
-  });
-
-  res.status(200).json({ succes: "true" });
-});
 exports.availUserTakeQuiz = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const user = await User.findOne({ _id: id });
