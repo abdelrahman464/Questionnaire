@@ -3,6 +3,7 @@ const Key = require("../models/keyModel");
 const User = require("../models/userModel");
 const Questions = require("../models/questionModel");
 const Answer = require("../models/answerModel");
+const userService = require("../services/userService");
 // const fs=require('fs');
 // const PDF = require('pdfkit');
 
@@ -83,9 +84,10 @@ exports.saveAnswers = asyncHandler(async (req, res) => {
     raters,
   });
   await answer.save();
-  // const answerId=answer._id;
   //TODO
   // send to raters email with this answerId
+  const answerId = answer._id;
+  userService.SendEmailsToRaters(answerId);
   return res
     .status(200)
     .json({ status: "you have submitted your answers successfully" });
@@ -355,12 +357,10 @@ exports.getUserAnswersReport = asyncHandler(async (req, res) => {
     });
     return res.status(200).json(result);
   } catch (error) {
-    return res
-      .status(400)
-      .json({
-        status: `faild`,
-        msg: `user should take the quiz twice and all raters should submit their answers in both times`,
-      });
+    return res.status(400).json({
+      status: `faild`,
+      msg: `user should take the quiz twice and all raters should submit their answers in both times`,
+    });
   }
 });
 //--------------------------------------------------------------------------------------//

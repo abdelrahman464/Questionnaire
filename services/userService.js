@@ -3,9 +3,9 @@ const bcrypt = require("bcryptjs");
 const ApiError = require("../utils/apiError");
 const factory = require("./handllerFactory");
 const User = require("../models/userModel");
+const Answer = require("../models/answerModel");
 const generateToken = require("../utils/generateToken");
 const sendEmail = require("../utils/sendEmail");
-
 
 //@desc get list of users
 //@route GET /api/v1/users
@@ -21,7 +21,9 @@ exports.getUser = factory.getOne(User);
 function generateNumber(char) {
   const currentYear = new Date().getFullYear();
   const randomNumbers = Math.floor(Math.random() * 1000000000); // Generate 8 random numbers
-  const result = `${char}${currentYear}${randomNumbers.toString().padStart(8, '0')}`;
+  const result = `${char}${currentYear}${randomNumbers
+    .toString()
+    .padStart(8, "0")}`;
   return result;
 }
 
@@ -31,13 +33,13 @@ function generateNumber(char) {
 
 exports.createUser = asyncHandler(async (req, res, next) => {
   //1-create user
-  const code =  generateNumber(req.body.name.charAt(0).toUpperCase());
-  console.log(code) 
+  const code = generateNumber(req.body.name.charAt(0).toUpperCase());
+  console.log(code);
   const user = await User.create({
     name: req.body.name,
     email: req.body.email,
     code,
-    ratersEmails: req.body.ratersEmails
+    ratersEmails: req.body.ratersEmails,
   });
   res.status(201).json({ data: user });
 });
@@ -49,9 +51,9 @@ exports.createAdmin = asyncHandler(async (req, res, next) => {
   const user = await User.create({
     name: req.body.name,
     email: req.body.email,
-    password:req.body.password,
+    password: req.body.password,
     phone: req.body.phone,
-    role:"admin"
+    role: "admin",
   });
   res.status(201).json({ data: user });
 });
@@ -110,61 +112,67 @@ exports.updateLoggedUserPassword = asyncHandler(async (req, res, next) => {
   res.status(200).json({ data: user, token });
 });
 //----------------------------------------------------------------------------------------//
-//TODO 
+//TODO
 //@desc add raters' emails to user with his code
 //@route PUT /api/v1/user/addRaters emails
 //@access public/protect
 //@params  code='ZMxs' raterEmailsToAdd = ['rater1@example.com', 'rater2@example.com'];                                      ;
 
-exports.addRatersEmail=asyncHandler(async(req,res,next)=> {
-    const{raterEmails}=req.body;
-    // Find the user by their name
-    
-    const user = await User.findOne({ code:req.user.code });
-    
-    if (!user) {
-      return next(new ApiError("user not exist", 404));
-    }
-    
-    // Add rater emails to the user's ratersEmails array
-    user.ratersEmails = user.ratersEmails.concat(raterEmails.map(email => ({ raterEmail: email })));
+exports.addRatersEmail = asyncHandler(async (req, res, next) => {
+  const { raterEmails } = req.body;
+  // Find the user by their name
 
-    // Save the updated user
-    await user.save();
+  const user = await User.findOne({ code: req.user.code });
 
-    return res.status(200).json({status:`success`,data:user});
-  
-}
-)
+  if (!user) {
+    return next(new ApiError("user not exist", 404));
+  }
 
+  // Add rater emails to the user's ratersEmails array
+  user.ratersEmails = user.ratersEmails.concat(
+    raterEmails.map((email) => ({ raterEmail: email }))
+  );
+
+  // Save the updated user
+  await user.save();
+
+  return res.status(200).json({ status: `success`, data: user });
+});
 
 //@desc send emails to raters' emails to user with his code
 //@route PUT /api/v1/user/sendEmails rater emails
 //@access public/protect
-//@params  code='ZMxs'    
+//@params  code='ZMxs'
 
-exports.SendEmailsToRaters = asyncHandler(async (req, res,next) => {
-  
+exports.SendEmailsToRaters = asyncHandler(async (req, res, next, answerId) => {
+  // const user = await User.findOne({code:req.user.Code});
+  // if (!user) {
+  //   return next(ApiError("live not found", 404));
+  // }
+  const answer = await Answer.findOne({ _id: answerId }).populate(
+    "userId",
+    "email"
+  ); // Populate the 'userId' field with 'email'
 
-  const user = await User.findOne({code:req.user.Code});
-  if (!user) {
-    return next(ApiError("live not found", 404));
+  if (!answer) {
+    return next(ApiError("Answer not found", 404));
   }
-  const url=`${process.env.RATERS_URL}?code=${user.rateCode}`
+  const url = `${process.env.RATERS_URL}?code=${answerId}`;
+  const userEmail = answer.userId.email;
+  answer.raters.forEach(async (rater) => {
+    const raterEmail = rater.email;
 
-
-  user.ratersEmails.forEach(async (rater) => {
     try {
       let emailMessage = "";
-      
-      emailMessage = `Hi ${rater.raterEmail} 
-                            \n your friend ${user.email} invited you to
+
+      emailMessage = `Hi ${raterEmail} 
+                            \n your friend ${userEmail} invited you to
                             \n to rate him in a quick Quiz
                             \n here is the link ${url}`;
-       
+
       await sendEmail({
-        to: rater.raterEmail,
-        subject: `rate your frined ${user.email}`,
+        to: raterEmail,
+        subject: `rate your frined ${userEmail}`,
         text: emailMessage,
       });
     } catch (err) {
@@ -175,16 +183,19 @@ exports.SendEmailsToRaters = asyncHandler(async (req, res,next) => {
   res.status(200).json({ succes: "true" });
 });
 exports.availUserTakeQuiz = asyncHandler(async (req, res) => {
-  const {id}=req.params;
-  const user = await User.findOne({_id:id});
-  if(!user){
-   return res.status(401).json({status:'faild',msg:'user not found'})
-  } 
-  if(!user.quizTaken){
-   return res.status(401).json({status:'faild',msg:'user already can take quiz'})
+  const { id } = req.params;
+  const user = await User.findOne({ _id: id });
+  if (!user) {
+    return res.status(401).json({ status: "faild", msg: "user not found" });
   }
-    user.quizTaken=0;
-    user.save();
-    return res.status(200).json({status:'success',msg:'user can take test again'})
- });
-
+  if (!user.quizTaken) {
+    return res
+      .status(401)
+      .json({ status: "faild", msg: "user already can take quiz" });
+  }
+  user.quizTaken = 0;
+  user.save();
+  return res
+    .status(200)
+    .json({ status: "success", msg: "user can take test again" });
+});
