@@ -11,10 +11,12 @@ const {
   getQuestions,
   updateQuestion,
   deleteQuestion,
+  takeTest,
 } = require("../services/questionService");
 
 const router = express.Router();
 
+router.route("/takeTest").get(authServices.protect, takeTest);
 router
   .route("/")
   .get(getQuestions)

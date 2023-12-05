@@ -7,6 +7,7 @@ const {
   getUserAnswersReport,
   getUserAnswers,
   getUserAnswersReportTotal,
+  updateRaterEmail,
 } = require("../services/answerService");
 
 const {
@@ -22,7 +23,7 @@ router
   .route("/saveanswers")
   .post(
     authServices.protect,
-    authServices.allowedTo("user","admin"),
+    authServices.allowedTo("user", "admin"),
     userAnswerValidator,
     saveAnswers
   );
@@ -52,5 +53,6 @@ router
     getUserAnswerValidator,
     getUserAnswers
   );
+router.put("/updateRaterEmail", updateRaterEmail);
 
 module.exports = router;

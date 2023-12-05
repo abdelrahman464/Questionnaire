@@ -5,7 +5,6 @@ const factory = require("./handllerFactory");
 const User = require("../models/userModel");
 const generateToken = require("../utils/generateToken");
 
-
 //@desc get list of users
 //@route GET /api/v1/users
 //@access private
@@ -39,6 +38,8 @@ exports.createUser = asyncHandler(async (req, res, next) => {
     email: req.body.email,
     code,
     ratersEmails: req.body.ratersEmails,
+    organization: req.body.organization,
+    alllowed_keys: req.body.alllowed_keys,
   });
   res.status(201).json({ data: user });
 });
@@ -59,24 +60,7 @@ exports.createAdmin = asyncHandler(async (req, res, next) => {
 //@desc update specific user
 //@route PUT /api/v1/user/:id
 //@access private
-exports.updateUser = asyncHandler(async (req, res, next) => {
-  const user = await User.findByIdAndUpdate(
-    req.params.id,
-    {
-      name: req.body.name,
-      email: req.body.email,
-      phone: req.body.phone,
-    },
-    {
-      new: true,
-    }
-  );
-  if (!user) {
-    return next(new ApiError(`User Not Found`, 404));
-  }
-
-  res.status(200).json({ data: user });
-});
+exports.updateUser = factory.updateOne(User);
 //@desc delete User
 //@route DELETE /api/v1/user/:id
 //@access private
@@ -110,39 +94,12 @@ exports.updateLoggedUserPassword = asyncHandler(async (req, res, next) => {
 
   res.status(200).json({ data: user, token });
 });
-//----------------------------------------------------------------------------------------//
-//TODO
-//@desc add raters' emails to user with his code
-//@route PUT /api/v1/user/addRaters emails
-//@access public/protect
-//@params  code='ZMxs' raterEmailsToAdd = ['rater1@example.com', 'rater2@example.com'];                                      ;
 
-exports.addRatersEmail = asyncHandler(async (req, res, next) => {
-  const { raterEmails } = req.body;
-  // Find the user by their name
-
-  const user = await User.findOne({ code: req.user.code });
-
-  if (!user) {
-    return next(new ApiError("user not exist", 404));
-  }
-
-  // Add rater emails to the user's ratersEmails array
-  user.ratersEmails = user.ratersEmails.concat(
-    raterEmails.map((email) => ({ raterEmail: email }))
-  );
-
-  // Save the updated user
-  await user.save();
-
-  return res.status(200).json({ status: `success`, data: user });
-});
-
+//-------------------------------------------------------------------------------------------------
 //@desc send emails to raters' emails to user with his code
 //@route PUT /api/v1/user/sendEmails rater emails
 //@access public/protect
 //@params  code='ZMxs'
-
 
 exports.availUserTakeQuiz = asyncHandler(async (req, res) => {
   const { id } = req.params;
@@ -150,14 +107,91 @@ exports.availUserTakeQuiz = asyncHandler(async (req, res) => {
   if (!user) {
     return res.status(401).json({ status: "faild", msg: "user not found" });
   }
-  if (!user.quizTaken) {
+  if (user.quizStatus === "ready" && !user.quizTakenAt) {
     return res
       .status(401)
-      .json({ status: "faild", msg: "user already can take quiz" });
+      .json({
+        status: "faild",
+        msg: "المستخدم بالفعل جاهز لأخذ الاختبار القبلي ",
+      });
+  } else if (user.quizStatus === "inProgress" && !user.quizTakenAt) {
+    return res
+      .status(401)
+      .json({ status: "faild", msg: "المستخدم لم يتم انهاء الاختبار القبلي " });
+  } else if (user.quizStatus === "ready" && user.quizTakenAt) {
+    return res
+      .status(401)
+      .json({
+        status: "faild",
+        msg: "المستخدم بالفعل جاهز لأخذ الاختبار البعدي ",
+      });
+  } else if (user.quizStatus === "inProgress" && user.quizTakenAt) {
+    return res
+      .status(401)
+      .json({ status: "faild", msg: "المستخدم لم يتم انهاء الاختبار البعدي " });
   }
-  user.quizTaken = 0;
+
+  user.quizStatus = "ready";
+  user.quizTakenAt = Date.now();
   user.save();
   return res
     .status(200)
     .json({ status: "success", msg: "user can take test again" });
+});
+//---------------------------------------------------------------------------------------------
+///@desc add keys to user
+//@route PUT /api/v1/user/addKeysToUser/:id
+//@access public/protect
+exports.addKeysToUser = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { keys } = req.body;
+
+  try {
+    const user = await User.findById(id);
+
+    if (!user) {
+      return res
+        .status(404)
+        .json({ status: "fail", message: "User not found" });
+    }
+
+    if (user.allowed_keys.length === 0) {
+      user.allowed_keys = keys;
+    } else {
+      user.allowed_keys = user.allowed_keys.concat(keys);
+    }
+
+    await user.save();
+
+    return res.status(200).json({ status: "success", data: user });
+  } catch (error) {
+    return res.status(500).json({ status: "error", message: error.message });
+  }
+});
+//-------------------------------------------------------------------------------------------
+//@desc remove keys from user
+//@route PUT /api/v1/user/removeKeysFromUser/:id
+//@access public/protect
+exports.removeKeysFromUser = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { keys } = req.body;
+
+  try {
+    const user = await User.findById(id);
+
+    if (!user) {
+      return res
+        .status(404)
+        .json({ status: "fail", message: "User not found" });
+    }
+
+    user.allowed_keys = user.allowed_keys.filter(
+      (key) => !keys.includes(key.toString())
+    );
+    await user.save();
+
+    return res.status(200).json({ status: "success", data: user });
+  } catch (error) {
+    return res.status(500).json({ status: "error", message: error.message });
+  }
 });

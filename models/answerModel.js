@@ -31,6 +31,9 @@ const answerSchema = mongoose.Schema({
       type: String,
       lowercase: true,
     },
+    gotEmailAt: {
+      type: Date,
+    },
     answers: [
       {
         questionId: {

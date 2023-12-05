@@ -67,34 +67,57 @@ exports.saveAnswers = asyncHandler(async (req, res) => {
   const userId = req.user._id;
   //validation on raters' emails
   const user = await User.findOne({ _id: userId });
-  if (user.quizTaken) {
-    return res.status(200).json({ status: "you cannot take test again" });
+  if (user.quizStatus === "finished") {
+    return res
+      .status(400)
+      .json({ status: "لا يمكنك اخذ الاختبار مره اخري حتي يأذن لك الادمن" });
   }
-  user.quizTaken = 1;
-  user.save();
-  const userEmail=user.email;
+
+  const userEmail = user.email;
   //TODO add emails of raters
   let raters = raterEmails.map((email, index) => ({
     email: email.toLowerCase(),
     name: raterNames[index], // Assuming raterNames has the corresponding names
   }));
 
-  const answer = new Answer({
-    userId,
-    userAnswer: answers,
-    raters,
-  });
-  await answer.save();
+  // Check if the user already has an answer
+  let existingAnswer = await Answer.findOne({ userId });
+  let finalAnswers = null;
+  let message = "";
+
+  if (existingAnswer) {
+    // If answer exists, append the new answers to the existing ones
+    existingAnswer.userAnswer = existingAnswer.userAnswer.concat(answers);
+    existingAnswer.raters = raters;
+    await existingAnswer.save();
+    finalAnswers = existingAnswer;
+  } else {
+    // If no answer exists, create a new answer document
+    const answer = new Answer({
+      userId,
+      userAnswer: answers,
+      raters,
+    });
+    await answer.save();
+    finalAnswers = answer;
+  }
+  const status = await updateUserQuizStatus(
+    finalAnswers.userAnswer.lengh,
+    user
+  );
   //TODO
   // send to raters email with this answerId
-  await SendEmailsToRaters(answer,userEmail);
+  if (status === "finished") {
+    await SendEmailsToRaters(finalAnswers, userEmail);
+    message = "تم انهاء الاختبار بنجاح وتم ارسال رساله الي المقيمين لتقييمك";
+  } else {
+    message = "تم تسجيل الاجابات الحاليه ,لا تنسي تكمله الاختبار";
+  }
 
-  return res
-    .status(200)
-    .json({ status: "you have submitted your answers successfully" });
+  return res.status(200).json({ status: "success", message });
 });
-
 //--------------------------------------------------------------------------------------//
+
 exports.getUserAnswersReport = asyncHandler(async (req, res) => {
   try {
     const { keyId, userId } = req.params;
@@ -452,7 +475,65 @@ exports.getUserAnswersReportTotal = asyncHandler(async (req, res) => {
     });
   }
 });
-const SendEmailsToRaters = async (answer,userEmail) => {
+
+//--------------------------------------------------------------------------------------------------------------//
+exports.updateRaterEmail = asyncHandler(async (req, res) => {
+  const { raterId, newEmail } = req.body;
+
+  try {
+    // 1. Find the rater document with the given docId and matching raterEmail
+    const answer = await Answer.findOne({
+      "raters._id": raterId,
+    });
+
+    // 2. Check if the rater document exists
+    if (!answer) {
+      return res
+        .status(401)
+        .json({ status: "fail", msg: "Incorrect email or id" });
+    }
+
+    // 3. Find the rater within the answer document
+    const rater = answer.raters.find((r) => r._id.toString() === raterId);
+
+    // 4. Update the rater's email
+    rater.email = newEmail;
+    rater.gotEmailAt = null; // Reset gotEmailAt
+
+    // 5. Save the updated answer document
+    await answer.save();
+
+    return res.status(200).json({
+      status: "success",
+      msg: "Rater email updated successfully",
+    });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ status: "error", msg: "Internal server error" });
+  }
+});
+//--------------------------------------------------------------------------------------------------------------//
+//@desc get list of QuestionIds that user answered
+//@use  in QuestionService , to get questions that user didn't answer yet
+exports.getAnsweredQuestions = asyncHandler(async (userId) => {
+  const user = await User.findById(userId);
+  if (!user) {
+    return res.status(404).json({ message: "User not found" });
+  }
+  let index = 0;
+  const userAnswers = await Answer.find({ userId });
+  // use cannot take second quiz unless he took the first one
+  if (userAnswers.length > 1) {
+    index = 1;
+  }
+  const answeredQuestions = userAnswers[index].userAnswer.map((answer) => {
+    return answer.questionId;
+  });
+  return answeredQuestions;
+});
+//--------------------------------------------------------------------------------------------------------------//
+const SendEmailsToRaters = async (answer, userEmail) => {
   const url = `${process.env.RATERS_URL}`;
   answer.raters.forEach(async (rater) => {
     const raterEmail = rater.email;
@@ -461,20 +542,44 @@ const SendEmailsToRaters = async (answer,userEmail) => {
       let emailMessage = "";
 
       emailMessage = `Hi ${raterEmail} 
-                            \n your friend ${userEmail} invited you to
-                            \n to rate him in a quick Quiz
-                            \n here is the link : ${url}
-                            \n use this code when you register your answer : ${answer._id}`;
+                        \n your friend ${userEmail} invited you to
+                        \n to rate him in a quick Quiz
+                        \n here is the link : ${url}
+                        \n use this code when you register your answer : ${answer._id}`;
 
       await sendEmail({
         to: raterEmail,
         subject: `rate your frined ${userEmail}`,
         text: emailMessage,
       });
+
+      rater.gotEmailAt = Date.now(); // Update gotEmailAt
+
+      await rater.save(); // Save the updated rater
     } catch (err) {
       return next(new ApiError("there is a problem with sending Email", 500));
     }
   });
 
   return true;
+};
+//--------------------------------------------------------------------------------------------------------------//
+//@desc update user quiz status
+//@use  in answerService , to update user quiz status
+const updateUserQuizStatus = async (answeredQuestions, user) => {
+  //check the desired question = the answered question
+
+  const questions = await Questions.find({
+    section: { $in: user.allowed_keys },
+  });
+  if (answeredQuestions.length === questions) {
+    //update user quiz status to finished
+    user.quizStatus = "finished";
+    await user.save();
+    return "finished";
+  } else {
+    user.quizStatus = "inProgress";
+    await user.save();
+    return "inProgress";
+  }
 };

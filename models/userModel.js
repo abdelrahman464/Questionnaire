@@ -19,26 +19,37 @@ const userShcema = new mongoose.Schema(
       type: String,
       minlength: [8, "too short code"],
     },
-    quizTaken: {
-      type: Boolean,
-      default:0
+    quizStatus: {
+      type: String,
+      enum: ["ready", "inProgress", "finished"],
+    },
+    retakeQuizAt: {
+      type: Date,
     },
     password: {
       type: String,
       // required: [true, "password required"],
       // minlength: [8, "too short Password"],
-    }
-  ,
+    },
     passwordChangedAt: Date,
     passwordResetCode: String,
     passwordResetExpires: Date,
     passwordResetVerified: Boolean,
     role: {
       type: String,
-      enum: ["user","admin"],
+      enum: ["user", "admin"],
       default: "user",
     },
-    
+    organization: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Organization",
+    },
+    allowed_keys: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Key",
+      },
+    ],
   },
   { timestamps: true }
 );

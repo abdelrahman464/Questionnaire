@@ -24,3 +24,26 @@ answers :[]
 
 
 
+what is new 4 dec
+1-creating  organization =>model srvice routes   done
+  1.2 -> test  done 
+  1.3 -> validation 
+  1.4 function loginFor coordinator
+
+2-add to user  organization field   and array of allowd keys  done 
+  2.2 -> test  done 
+  2.3 -> update user function  done 
+  2.4 remove key from user list  done 
+  2.5 add key to user list done 
+
+6 desc
+  edit questions to accept true and false  
+  take test for raters (they will take quiz only one time)
+  auto sending report via email and what'sapp
+  trying to make export excel sheet for users table 
+  edit calculation of report 
+
+
+  
+
+
