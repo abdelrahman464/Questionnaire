@@ -1,5 +1,5 @@
 const Question = require("../models/questionModel");
-const Key = require("../models/keyModel");
+const Answer = require("../models/answerModel");
 const factory = require("./handllerFactory");
 const { getAnsweredQuestions } = require("./answerService");
 
@@ -24,10 +24,14 @@ exports.updateQuestion = factory.updateOne(Question);
 //@access private
 exports.deleteQuestion = factory.deleteOne(Question);
 
+//@desc get filtered list of Questions that user didn't answer
+//@route GET /api/v1/Questions/takeTest
+//@actor Student
+
 exports.takeTest = async (req, res) => {
   // get questions which it's key exists in req.user.allowed_keys
   const questions = await Question.find({
-    keyId: { $in: req.user.allowed_keys },
+    section: { $in: req.user.allowed_keys },
   });
   const answeredQuestionIds = await getAnsweredQuestions(req.user._id);
   //help : it don't filter
@@ -55,5 +59,26 @@ exports.takeTest = async (req, res) => {
     data: {
       questions: keyQuestions,
     },
+  });
+};
+//@desc get list of Questions that
+//@route GET /api/v1/Questions/takeTest
+//@Actor Rater
+
+exports.takeTestForRater = async (req, res) => {
+  // get answer doc with req.body.docId t
+  const userAnswer = await Answer.find({ _id: req.body.docId });
+  //get userId form answer doc
+  const userId = userAnswer.user;
+  //get user from User model with userId
+  const user = await User.find({ _id: userId });
+  //get allowed_keys from user
+  const { allowed_keys } = user;
+  //get questions with allowed_keys
+  const questions = await Question.find({ section: { $in: allowed_keys } });
+  //return questions
+  return res.status(200).json({
+    status: "success",
+    data: questions,
   });
 };

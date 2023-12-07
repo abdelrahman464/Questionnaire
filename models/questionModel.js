@@ -7,6 +7,9 @@ const questionSchema = mongoose.Schema(
           type: String,
           required: true,
         },
+        answer: {
+          type: Boolean,
+        },
         section: {
           type: mongoose.Schema.Types.ObjectId,
           ref: 'Key',

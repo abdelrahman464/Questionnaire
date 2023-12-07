@@ -10,6 +10,10 @@ exports.createQuestionValidator = [
     .withMessage("Question required")
     .isLength({ min: 3 })
     .withMessage("too short question"),
+  check("answer")
+    .optional()
+    .isIn([1, 0])
+    .withMessage("answer must be true or false"),
   check("section")
     .notEmpty()
     .withMessage("section ID is required")

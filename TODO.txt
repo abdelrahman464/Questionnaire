@@ -37,13 +37,44 @@ what is new 4 dec
   2.5 add key to user list done 
 
 6 desc
+  push commit  => done
+
   edit questions to accept true and false  
-  take test for raters (they will take quiz only one time)
+    -model  => done 
+    -validation   on answer to be true or false  => done 
+
+
+  take test for raters (they will take quiz only one time) => done
+
+
+
+  make function to send email to specific email 
+      done 
+      tese   [ ] 
+  
+
+
+
   auto sending report via email and what'sapp
+    "check whether user is ready to get the document or not "
+    
+
+    -add isComplete field  in answerModel
+
+
+    -make isDocReady  to check if user and his raters has answered the quiz twice
+
+
+
+
+
+  add multer middleware of organiztions 
+
+
+
+
   trying to make export excel sheet for users table 
   edit calculation of report 
 
-
-  
 
 

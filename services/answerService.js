@@ -15,20 +15,20 @@ exports.saveRaterAnswers = asyncHandler(async (req, res) => {
 
   try {
     // 1. Find the rater document with the given docId and matching raterEmail
-    const rater = await Answer.findOne({
+    const answerDoc = await Answer.findOne({
       _id: docId,
       "raters.email": raterEmail,
     });
 
     // 2. Check if the rater document exists
-    if (!rater) {
+    if (!answerDoc) {
       return res
         .status(401)
         .json({ status: "fail", msg: "Incorrect email or id" });
     }
 
     // 3. Check if the user has already submitted their answers
-    const matchingRater = rater.raters.find((r) => r.email === raterEmail);
+    const matchingRater = answerDoc.raters.find((r) => r.email === raterEmail);
     if (matchingRater && matchingRater.answers.length !== 0) {
       return res.status(401).json({
         status: "fail",
@@ -46,11 +46,17 @@ exports.saveRaterAnswers = asyncHandler(async (req, res) => {
     }
 
     // 5. Save the updated rater document
-    await rater.save();
+    await answerDoc.save();
+
+    // 6. update isRaterAnserCompleted
+    await this.updateIsRaterAnsersCompleted(answerDoc);
+    //7.  check if user is ready to get a report
+    const isReportReady = await this.checkUserReport(answerDoc.userId);
 
     return res.status(200).json({
       status: "success",
       msg: "You have submitted your answers successfully",
+      isReportReady,
     });
   } catch (error) {
     return res
@@ -109,6 +115,9 @@ exports.saveAnswers = asyncHandler(async (req, res) => {
   // send to raters email with this answerId
   if (status === "finished") {
     await SendEmailsToRaters(finalAnswers, userEmail);
+    finalAnswers.isUserAnserCompleted = 1;
+    await finalAnswers.save();
+    // can i update answer here and save again ??
     message = "تم انهاء الاختبار بنجاح وتم ارسال رساله الي المقيمين لتقييمك";
   } else {
     message = "تم تسجيل الاجابات الحاليه ,لا تنسي تكمله الاختبار";
@@ -564,6 +573,43 @@ const SendEmailsToRaters = async (answer, userEmail) => {
   return true;
 };
 //--------------------------------------------------------------------------------------------------------------//
+exports.SendEmailToRater = async (req, res) => {
+  const { raterEmail, raterName, answerDocId } = req.body;
+
+  const url = `${process.env.RATERS_URL}`;
+
+  try {
+    let emailMessage = "";
+
+    emailMessage = `Hi ${raterName} 
+                        \n your friend invited you to
+                        \n to rate him in a quick Quiz
+                        \n here is the link : ${url}
+                        \n use this code when you register your answer : ${answerDocId}`;
+
+    await sendEmail({
+      to: raterEmail,
+      subject: `rate your frined`,
+      text: emailMessage,
+    });
+
+    //update gotEmailAt
+    await Answer.findOneAndUpdate(
+      { _id: answerDocId, "raters.email": raterEmail },
+      { $set: { "raters.$.gotEmailAt": Date.now() } }
+    );
+
+    return res.status(200).json({
+      status: "success",
+      msg: "Email sent successfully",
+    });
+  } catch (err) {
+    return res
+      .status(500)
+      .json({ status: "error", msg: "Internal server error" });
+  }
+};
+//--------------------------------------------------------------------------------------------------------------//
 //@desc update user quiz status
 //@use  in answerService , to update user quiz status
 const updateUserQuizStatus = async (answeredQuestions, user) => {
@@ -583,3 +629,30 @@ const updateUserQuizStatus = async (answeredQuestions, user) => {
     return "inProgress";
   }
 };
+//--------------------------------------------------------------------------------------------------------------//
+// function to update and check if anser isCompleted
+exports.updateIsRaterAnsersCompleted = async (answerDoc) => {
+  if (answerDoc.raters.length === 3) {
+    answerDoc.isRatersAnserCompleted = 1;
+    await answerDoc.save();
+    return 1;
+  }
+};
+//--------------------------------------------------------------------------------------------------------------//
+// function to update and check if anser isCompleted
+exports.checkUserReport = async (userId) => {
+  const userAnswers = await Answer.find({ userId });
+  if (userAnswers.length === 2) {
+    if (
+      userAnswers[0].isUserAnserCompleted === true &&
+      userAnswers[0].isRatersAnserCompleted === true &&
+      userAnswers[1].isUserAnserCompleted === true &&
+      userAnswers[0].isRatersAnserCompleted === true
+    ) {
+      return true;
+    }
+  } else {
+    return false;
+  }
+};
+//--------------------------------------------------------------------------------------------------------------//

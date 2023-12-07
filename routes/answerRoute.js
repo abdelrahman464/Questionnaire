@@ -3,11 +3,11 @@ const authServices = require("../services/authServices");
 const {
   saveAnswers,
   saveRaterAnswers,
-
   getUserAnswersReport,
   getUserAnswers,
   getUserAnswersReportTotal,
   updateRaterEmail,
+  SendEmailToRater,
 } = require("../services/answerService");
 
 const {
@@ -15,6 +15,7 @@ const {
   raterAnswerValidator,
   getUserAnswerValidator,
   UserAnswersReportValidator,
+  sendEmailToRaterValidator,
 } = require("../utils/validators/answerValidator");
 
 const router = express.Router();
@@ -54,5 +55,13 @@ router
     getUserAnswers
   );
 router.put("/updateRaterEmail", updateRaterEmail);
+//dont forget to add remove user
+router.put(
+  "/SendEmailToRater",
+  authServices.protect,
+  authServices.allowedTo("admin", "user"),
+  sendEmailToRaterValidator,
+  SendEmailToRater
+);
 
 module.exports = router;

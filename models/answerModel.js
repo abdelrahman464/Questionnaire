@@ -22,6 +22,14 @@ const answerSchema = mongoose.Schema({
       },
     },
   ],
+  isUserAnserCompleted: {
+    type: Boolean,
+    default: false,
+  },
+  isRatersAnserCompleted: {
+    type: Boolean,
+    default: false,
+  },
   raters:[{
     name: {
       type: String,
