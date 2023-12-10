@@ -76,5 +76,56 @@ what is new 4 dec
   trying to make export excel sheet for users table 
   edit calculation of report 
 
+//------------------------------------------
+9 dec
+  -edit questions to accept multi answers  
+    -model  => add options array  
+               edit correctAnswer to be string
+
+  TODO
+    test questions   done 
+    test save answers 
 
 
+    senarios:
+    QUESTIONS 
+     *save questions:
+        send array of options 
+        send a string of correct answer
+      update questions:
+        send array of options => frontend review options and he updated what he want then resend again
+
+    -validation   done
+    ANSWERS
+     *save answers
+      // in frontend if user choosed the coorect answer he will send in ans 1 else 0 
+
+      questions which has options key
+        he should make an object consists of questionId   answer {0 || 1 => based on his answer}   answerText 
+
+      when he display questions in specific report he view question and answer text if answer=0  it should be red else green 
+
+
+
+   -Auto sending report via email and what'sapp
+    steps:
+      1-check whether user is ready to get the document or not  "done"
+      2-add isComplete field  in answerModel  done
+      3-make isDocReady  to check if user and his raters has answered the quiz twice "done"
+      4-make function that send email to user and attached a doc with it    "done"
+
+who are we  done 
+
+10 dec 
+ upload logo 
+ get coordinator students 
+ 
+
+
+
+
+
+
+
+
+**save answers process waited to be tested 

@@ -7,8 +7,11 @@ const questionSchema = mongoose.Schema(
           type: String,
           required: true,
         },
-        answer: {
-          type: Boolean,
+        options: { 
+          type: [String], // Specify that options is an array of strings
+        },
+        correctAnswer: {
+          type: String,
         },
         section: {
           type: mongoose.Schema.Types.ObjectId,

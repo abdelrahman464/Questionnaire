@@ -16,9 +16,12 @@ const answerSchema = mongoose.Schema({
       },
       answer: {
         type: Number,
-        min: 1,
+        min: 0, // i made this 0 instead of 1 cause , in questions with options , when he asnwer false , it will be 0
         max: 5,
         required: true,
+      },
+      answerText: {
+        type: String,
       },
     },
   ],
@@ -30,35 +33,39 @@ const answerSchema = mongoose.Schema({
     type: Boolean,
     default: false,
   },
-  raters:[{
-    name: {
-      type: String,
-      lowercase: true,
-    },
-    email: {
-      type: String,
-      lowercase: true,
-    },
-    gotEmailAt: {
-      type: Date,
-    },
-    answers: [
-      {
-        questionId: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: "Question",
-          // required: true,
-        },
-        answer: {
-          type: Number,
-          min: 1,
-          max: 5,
-          // required: true,
-        },
+  raters: [
+    {
+      name: {
+        type: String,
+        lowercase: true,
       },
-    ],
-  }],
-  
+      email: {
+        type: String,
+        lowercase: true,
+      },
+      gotEmailAt: {
+        type: Date,
+      },
+      answers: [
+        {
+          questionId: {
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "Question",
+            // required: true,
+          },
+          answer: {
+            type: Number,
+            min: 0,
+            max: 5,
+            // required: true,
+          },
+          answerText: {
+            type: String,
+          },
+        },
+      ],
+    },
+  ],
 });
 
 answerSchema.index({ "raters.email": 1 }, { unique: true, sparse: true });

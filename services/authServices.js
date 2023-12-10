@@ -3,6 +3,7 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 const asyncHandler = require("express-async-handler");
 const User = require("../models/userModel");
+const Organization = require("../models/organizationModel");
 const ApiError = require("../utils/apiError");
 const sendEmail = require("../utils/sendEmail");
 const generateToken = require("../utils/generateToken");
@@ -13,19 +14,18 @@ const generateToken = require("../utils/generateToken");
 exports.login = asyncHandler(async (req, res, next) => {
   //1- check if password and emaail in the body
   //2- check if user exist & check if password is correct
-  console.log(req.body.password, req.body.email);
   const user = await User.findOne({ email: req.body.email });
   //check if he has taken quiz before
   if (!user || !(await bcrypt.compare(req.body.password, user.password))) {
     return next(new ApiError("incorrect password or email", 401));
   }
- 
+
   //3- generate token
   const token = generateToken(user._id);
   //3- send response to client side
   res.status(200).json({ data: user, token });
 });
-
+//-------------------------------------------------------------------
 //@desc login
 //@route POST /api/v1/auth/login
 //@access public
@@ -41,6 +41,32 @@ exports.loginUser = asyncHandler(async (req, res, next) => {
   //3- send response to client side
   res.status(200).json({ data: user, token });
 });
+//-------------------------------------------
+//@desc login for coordinators
+//@route POST /api/v1/auth/logincoordinators
+//@access public
+
+exports.loginCoordinator = asyncHandler(async (req, res, next) => {
+  //1- check if password and email in the body
+  //2- check if user exists & check if password is correct
+  const org = await Organization.findOne({ "coordiantors.email": req.email });
+
+  if (!org) {
+    return next(new ApiError("user not found", 401));
+  }
+
+  const user = org.coordiantors.find(
+    (coordinator) => coordinator.email === req.email
+  );
+  if (!user || !(await bcrypt.compare(req.body.password, user.password))) {
+    return next(new ApiError("incorrect password or email", 401));
+  }
+  //3- generate token
+  const token = generateToken(user._id);
+  //3- send response to client side
+  res.status(200).json({ data: user, token });
+});
+//-------------------------------------------------------------------
 //@desc make sure user is logged in
 exports.protect = asyncHandler(async (req, res, next) => {
   //1- check if token exists, if exist get it

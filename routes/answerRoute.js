@@ -8,6 +8,8 @@ const {
   getUserAnswersReportTotal,
   updateRaterEmail,
   SendEmailToRater,
+  SendReportDocToUser,
+  upload,
 } = require("../services/answerService");
 
 const {
@@ -62,6 +64,13 @@ router.put(
   authServices.allowedTo("admin", "user"),
   sendEmailToRaterValidator,
   SendEmailToRater
+);
+router.put(
+  "/SendReportDocToUser",
+  authServices.protect,
+  authServices.allowedTo("admin", "user"),
+  upload,
+  SendReportDocToUser
 );
 
 module.exports = router;

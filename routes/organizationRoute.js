@@ -1,12 +1,15 @@
 const express = require("express");
 const authServices = require("../services/authServices");
 const {
+  uploadOrgLogo,
+  resizeImage,
   createOrganization,
   updateOrganization,
   getOrganizations,
   getOrganization,
   deleteOrganization,
   addCoordiantor,
+  getOrgStudents,
 } = require("../services/organizationService");
 
 const router = express.Router();
@@ -17,6 +20,8 @@ router
   .post(
     authServices.protect,
     authServices.allowedTo("admin"),
+    uploadOrgLogo,
+    resizeImage,
     createOrganization
   );
 router
@@ -34,5 +39,7 @@ router
   );
 
 router.put("/addCoordiantor/:id", authServices.protect, addCoordiantor);
+
+router.get("/getOrgStudents", authServices.protect, getOrgStudents);
 
 module.exports = router;

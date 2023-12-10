@@ -1,4 +1,5 @@
 const asyncHandler = require("express-async-handler");
+const multer = require("multer");
 const Key = require("../models/keyModel");
 const User = require("../models/userModel");
 const Questions = require("../models/questionModel");
@@ -573,6 +574,7 @@ const SendEmailsToRaters = async (answer, userEmail) => {
   return true;
 };
 //--------------------------------------------------------------------------------------------------------------//
+//test it 
 exports.SendEmailToRater = async (req, res) => {
   const { raterEmail, raterName, answerDocId } = req.body;
 
@@ -581,11 +583,10 @@ exports.SendEmailToRater = async (req, res) => {
   try {
     let emailMessage = "";
 
-    emailMessage = `Hi ${raterName} 
-                        \n your friend invited you to
-                        \n to rate him in a quick Quiz
-                        \n here is the link : ${url}
-                        \n use this code when you register your answer : ${answerDocId}`;
+    emailMessage = `مرحباً ${raterName} 
+          \n صديقك دعاك لتقييمه في استبيان سريع
+          \n هذا هو الرابط: ${url}
+          \n استخدم هذا الرمز عند تسجيل إجابتك: ${answerDocId}`;
 
     await sendEmail({
       to: raterEmail,
@@ -609,6 +610,46 @@ exports.SendEmailToRater = async (req, res) => {
       .json({ status: "error", msg: "Internal server error" });
   }
 };
+//--------------------------------------------------------------------------------------------------------------//
+exports.SendReportDocToUser = async (req, res) => {
+  // const { userId } = req.body;
+  // const user = await User.findById(userId);
+
+  try {
+    let emailMessage = "";
+
+    emailMessage = `مرحبًا 
+             \n التقرير النهائي الخاص بك جاهز
+             \n يمكنك مشاهدته الآن`;
+
+    await sendEmail({
+      to: "abdogomaa4600@gmail.com",
+      subject: `finnal report`,
+      text: emailMessage,
+      attachments: [
+        {
+          filename: "finnalReportDoc.pdf", // Adjust the filename as needed
+          content: req.file.buffer, // Assuming 'buffer' contains the file content
+        },
+      ],
+    });
+
+    return res.status(200).json({
+      status: "success",
+      msg: "reportDoc sent successfully",
+    });
+  } catch (err) {
+    return res
+      .status(500)
+      .json({ status: "error", msg: err.message || "Internal server error" });
+  }
+};
+//--------------------------------------------------------------------------------------------------------------//
+// Use multer or another middleware to handle file uploads
+exports.upload = multer({
+  storage: multer.memoryStorage(),
+}).single("reportDoc"); // Assuming 'answerDoc' is the field name in the form
+
 //--------------------------------------------------------------------------------------------------------------//
 //@desc update user quiz status
 //@use  in answerService , to update user quiz status

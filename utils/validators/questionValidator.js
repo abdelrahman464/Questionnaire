@@ -9,11 +9,30 @@ exports.createQuestionValidator = [
     .notEmpty()
     .withMessage("Question required")
     .isLength({ min: 3 })
-    .withMessage("too short question"),
-  check("answer")
+    .withMessage("too short question")
+    .isString()
+    .withMessage("text must be a string"),
+  //-------------
+  check("options")
     .optional()
-    .isIn([1, 0])
-    .withMessage("answer must be true or false"),
+    .isArray()
+    .withMessage("options must be an array")
+    .custom((options) => {
+      if (!options.every((option) => typeof option === "string")) {
+        throw new Error("options must be an array of strings");
+      }
+      return true;
+    }),
+  //-------------
+  check("correctAnswer")
+    .if(check("options").exists())
+    .notEmpty()
+    .withMessage("correctAnswer required")
+    .isLength({ min: 3 })
+    .withMessage("too short correctAnswer")
+    .isString()
+    .withMessage("correctAnswer must be a string"),
+  //-------------
   check("section")
     .notEmpty()
     .withMessage("section ID is required")
@@ -44,6 +63,11 @@ exports.idValidator = [
 ];
 //--------------------------------------------------------------------------------------------//
 exports.updateQuestionValidator = [
+  check("id")
+    .notEmpty()
+    .withMessage("ID is required")
+    .isMongoId()
+    .withMessage("Invalid ID format"),
   check("text")
     .optional()
     .isLength({ min: 3 })
@@ -59,11 +83,23 @@ exports.updateQuestionValidator = [
         }
       })
     ),
-  check("id")
-    .notEmpty()
-    .withMessage("ID is required")
-    .isMongoId()
-    .withMessage("Invalid ID format"),
+  check("options")
+    .optional()
+    .isArray()
+    .withMessage("options must be an array")
+    .custom((options) => {
+      if (!options.every((option) => typeof option === "string")) {
+        throw new Error("options must be an array of strings");
+      }
+      return true;
+    }),
+  //-------------
+  check("correctAnswer")
+    .optional()
+    .isLength({ min: 3 })
+    .withMessage("too short correctAnswer")
+    .isString()
+    .withMessage("correctAnswer must be a string"),
 
   validatorMiddleware,
 ];
