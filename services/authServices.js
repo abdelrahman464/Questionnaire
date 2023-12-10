@@ -13,19 +13,47 @@ const generateToken = require("../utils/generateToken");
 //@access public
 exports.login = asyncHandler(async (req, res, next) => {
   //1- check if password and emaail in the body
-  //2- check if user exist & check if password is correct
-  const user = await User.findOne({ email: req.body.email });
-  //check if he has taken quiz before
-  if (!user || !(await bcrypt.compare(req.body.password, user.password))) {
-    return next(new ApiError("incorrect password or email", 401));
+  //2- check if user exist & check if password is correct+
+  console.log(req.body);
+  let user;
+  let token;
+  if (!req.body.type || req.body.type === "admin") {
+    user = await User.findOne({ email: req.body.email });
+    //check if he has taken quiz before
+    if (!user || !(await bcrypt.compare(req.body.password, user.password))) {
+      return next(new ApiError("incorrect password or email", 401));
+    }
+    token = generateToken(user._id);
+  }
+  //login coordinator
+  else if (req.body.type === "coordinator") {
+    const org = await Organization.findOne({
+      "coordiantors.email": req.body.email,
+    });
+
+    if (!org) {
+      return next(new ApiError("user not found", 401));
+    }
+
+    user = org.coordiantors.filter(
+      (coordinator) => coordinator.email === req.body.email
+    );
+
+    console.log(user);
+    if (
+      !user[0] ||
+      !(await bcrypt.compare(req.body.password, user[0].password))
+    ) {
+      return next(new ApiError("incorrect password or email", 401));
+    }
+    //3- generate token
+    token = generateToken(user[0]._id);
   }
 
-  //3- generate token
-  const token = generateToken(user._id);
   //3- send response to client side
   res.status(200).json({ data: user, token });
 });
-//-------------------------------------------------------------------
+//----------------------------------------------------
 //@desc login
 //@route POST /api/v1/auth/login
 //@access public
@@ -46,30 +74,10 @@ exports.loginUser = asyncHandler(async (req, res, next) => {
 //@route POST /api/v1/auth/logincoordinators
 //@access public
 
-exports.loginCoordinator = asyncHandler(async (req, res, next) => {
-  //1- check if password and email in the body
-  //2- check if user exists & check if password is correct
-  const org = await Organization.findOne({ "coordiantors.email": req.email });
-
-  if (!org) {
-    return next(new ApiError("user not found", 401));
-  }
-
-  const user = org.coordiantors.find(
-    (coordinator) => coordinator.email === req.email
-  );
-  if (!user || !(await bcrypt.compare(req.body.password, user.password))) {
-    return next(new ApiError("incorrect password or email", 401));
-  }
-  //3- generate token
-  const token = generateToken(user._id);
-  //3- send response to client side
-  res.status(200).json({ data: user, token });
-});
 //-------------------------------------------------------------------
 //@desc make sure user is logged in
 exports.protect = asyncHandler(async (req, res, next) => {
-  //1- check if token exists, if exist get it
+  // 1- check if token exists, if exist get it
   let token;
   if (
     req.headers.authorization &&
@@ -78,38 +86,55 @@ exports.protect = asyncHandler(async (req, res, next) => {
     token = req.headers.authorization.split(" ")[1];
   }
   if (!token) {
-    return next(new ApiError("you are not login,please login first", 401));
+    return next(
+      new ApiError("You are not logged in, please log in first", 401)
+    );
   }
-  //2- verify token (no change happens,expired token)
+
+  // 2- verify token (no change happens, expired token)
   const decoded = jwt.verify(token, process.env.JWT_SECRET_KEY);
 
-  //3-check if user exists
-  const currentUser = await User.findById(decoded.userId);
+  // 3-check if user exists
+  let currentUser = await User.findById(decoded.userId);
   if (!currentUser) {
-    next(new ApiError("user is not available"));
-  }
-  //4-check if user changed password after token generated
-  if (currentUser.passwordChangedAt) {
-    //convert data to timestamp by =>getTime()
-    const passwordChangedTimestamp = parseInt(
-      currentUser.passwordChangedAt.getTime() / 1000,
-      10
+    const org = await Organization.findOne(
+      {
+        "coordiantors._id": decoded.userId,
+      },
+      {
+        // Use $elemMatch projection to return only the matched coordinator
+        coordiantors: { $elemMatch: { _id: decoded.userId } },
+      }
     );
-    //it mean password changer after token generated
-    if (passwordChangedTimestamp > decoded.iat) {
-      return next(
-        new ApiError(
-          "user recently changed his password,please login again",
-          401
-        )
-      );
+
+    currentUser = org.coordiantors[0];
+    if (!currentUser) {
+      return next(new ApiError("User is not available", 404));
     }
   }
-  //add user to request
-  //to use this in authorization
-  // check if user is already registered
-  req.user = currentUser;
 
+  // 4-check if user changed password after token generated
+  if ("passwordChangedAt" in currentUser) {
+    // Check if the user has the passwordChangedAt key
+    if (currentUser.passwordChangedAt) {
+      const changedPasswordTime = parseInt(
+        currentUser.passwordChangedAt.getTime() / 1000,
+        10
+      );
+      if (changedPasswordTime > decoded.iat) {
+        return next(
+          new ApiError(
+            "You recently changed your password, please log in again",
+            401
+          )
+        );
+      }
+    }
+  }
+  // Add user to request
+  // To use this in authorization
+
+  req.user = currentUser;
   next();
 });
 //@desc  Authorization (user permissions)

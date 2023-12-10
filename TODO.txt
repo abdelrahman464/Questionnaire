@@ -117,15 +117,12 @@ what is new 4 dec
 who are we  done 
 
 10 dec 
- upload logo 
- get coordinator students 
+ upload logo   done 
+ get coordinator students  done 
+ remove coordinator  done
+ validation on addCoordinator
+ login for coordinator 
+ protect handling for both coordinator and admin 
+
  
-
-
-
-
-
-
-
-
 **save answers process waited to be tested 

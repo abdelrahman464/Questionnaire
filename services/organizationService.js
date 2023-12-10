@@ -2,7 +2,7 @@
 const fs = require("fs");
 const asyncHandler = require("express-async-handler");
 const { v4: uuidv4 } = require("uuid");
-const bcrypt = require('bcrypt');
+const bcrypt = require("bcrypt");
 const Organization = require("../models/organizationModel");
 const User = require("../models/userModel");
 const factory = require("./handllerFactory");
@@ -52,15 +52,18 @@ exports.updateOrganization = factory.updateOne(Organization);
 //@access private
 exports.deleteOrganization = factory.deleteOne(Organization);
 
+//@desc Add a coordinator to an organization
+//@route PUT /api/v1/Organizations/addCoordinator/:id
+//@access Admin
 exports.addCoordiantor = async (req, res, next) => {
   try {
     const { id } = req.params;
-    const { coordiantor } = req.body;
-    
+    const coordiantor = req.body;
+
     // Hash the coordinator's password
     const saltRounds = 10;
     const hashedPassword = await bcrypt.hash(coordiantor.password, saltRounds);
-    
+
     // Replace the plain text password with the hashed one
     coordiantor.password = hashedPassword;
 
@@ -71,7 +74,7 @@ exports.addCoordiantor = async (req, res, next) => {
 
     organization.coordiantors.push(coordiantor);
     await organization.save();
-    
+
     // Avoid sending the hashed password in the response
     coordiantor.password = undefined;
 
@@ -83,22 +86,65 @@ exports.addCoordiantor = async (req, res, next) => {
     next(error);
   }
 };
+//@desc Remove a coordinator from an organization
+//@route PUT /api/v1/Organizations/removeCoordinator/:coordinatorId
+//@access Admin
+exports.removeCoordinator = async (req, res, next) => {
+  try {
+    //this id is for coordinator not for organization
+    const { id } = req.params;
 
+    // Find the organization containing the coordinator with coordinatorId
+    const organization = await Organization.findOne({
+      "coordiantors._id": id,
+    });
+
+    if (!organization) {
+      return next(
+        new ApiError("Coordinator not found in any organization", 404)
+      );
+    }
+
+    // Remove the coordinator from the array
+    organization.coordiantors = organization.coordiantors.filter(
+      (coordinator) => coordinator._id.toString() !== id
+    );
+
+    // Save the updated organization
+    await organization.save();
+
+    res.status(200).json({
+      status: "success",
+      msg: "Coordinator removed successfully",
+      organization,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+//@desc get list of students in an organization
+//@route GET /api/v1/Organizations/getOrgStudents
+//@access private
 exports.getOrgStudents = async (req, res) => {
   try {
     const organization = await Organization.findOne({
       "coordiantors.email": req.user.email,
     });
-    if (!organization) {
-      return next(new AppError("انت لا تنتمي لاي منظمه", 404));
-    }
-    const users = User.find({ organization: organization._id });
 
-    res.status(200).json({
+    if (!organization) {
+      return next(new ApiError("انت لا تنتمي لاي منظمه", 404));
+    }
+    const users = await User.find({ organization: organization._id });
+
+    return res.status(200).json({
       status: "success",
       users,
     });
   } catch (error) {
-    next(error);
+    res.status(400).json({
+      status: "fail",
+      message: error.message,
+    });
   }
 };

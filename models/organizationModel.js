@@ -19,6 +19,10 @@ const organizationSchema = new mongoose.Schema({
       password: {
         type: String,
       },
+      role: {
+        type: String,
+        default: "coordinator",
+      },
     },
   ],
   createdAt: {
