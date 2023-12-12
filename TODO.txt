@@ -116,13 +116,31 @@ what is new 4 dec
 
 who are we  done 
 
-10 dec 
+10 dec   
  upload logo   done 
  get coordinator students  done 
  remove coordinator  done
  validation on addCoordinator
  login for coordinator 
- protect handling for both coordinator and admin 
+ protect handling f
+ or both coordinator and admin 
+
+
 
  
-**save answers process waited to be tested 
+ 12 dec
+**save answers process waited to be tested  done
+
+
+
+
+
+  TODO 
+    populate allowed_keys  in getAllUsers and getMe done 
+
+    make middleware on takeRaterTest  done 
+
+
+    make route to get ratertest done 
+    apply this middleware before it done 
+    

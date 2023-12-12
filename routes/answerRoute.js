@@ -20,6 +20,7 @@ const {
   sendEmailToRaterValidator,
 } = require("../utils/validators/answerValidator");
 
+
 const router = express.Router();
 
 router
@@ -30,6 +31,7 @@ router
     userAnswerValidator,
     saveAnswers
   );
+//make route to get raterTest  
 router.route("/saveRateranswers").post(raterAnswerValidator, saveRaterAnswers);
 
 router

@@ -56,7 +56,7 @@ exports.saveRaterAnswers = asyncHandler(async (req, res) => {
 
     return res.status(200).json({
       status: "success",
-      msg: "You have submitted your answers successfully",
+      msg: "لقد تم تسجيل اجاباتك بنجاح",
       isReportReady,
     });
   } catch (error) {
@@ -70,6 +70,8 @@ exports.saveRaterAnswers = asyncHandler(async (req, res) => {
 //@access private
 exports.saveAnswers = asyncHandler(async (req, res) => {
   //validation : check if the id of doc contain rater email
+  //---------------------B1----------------//
+
   const { answers, raterEmails, raterNames } = req.body;
   const userId = req.user._id;
   //validation on raters' emails
@@ -86,44 +88,60 @@ exports.saveAnswers = asyncHandler(async (req, res) => {
     email: email.toLowerCase(),
     name: raterNames[index], // Assuming raterNames has the corresponding names
   }));
+  //-------------------B1 end-------------------//
+  //-------------------B2-------------------//
+  //userAnswers--> will be all answers for this user
+  //@desc--> this block is to deteremine if i should work on the first answer or the second one
+  // Get user Answers
+  const userAnswers = await Answer.find({ userId });
+  let answer;
 
-  // Check if the user already has an answer
-  let existingAnswer = await Answer.findOne({ userId });
-  let finalAnswers = null;
-  let message = "";
+  if (
+    (user.quizStatus === "ready" || user.quizStatus === "inProgress") &&
+    user.retakeQuizAt
+  ) {
+    answer = userAnswers[1];
+  } else {
+    answer = userAnswers[0];
+  }
+  //-------------------B2 end -------------------//
 
-  if (existingAnswer) {
+  //-------------------B3-------------------//
+  //@desc --> if answer exists ? update it : create new one and save it
+  if (answer) {
     // If answer exists, append the new answers to the existing ones
-    existingAnswer.userAnswer = existingAnswer.userAnswer.concat(answers);
-    existingAnswer.raters = raters;
-    await existingAnswer.save();
-    finalAnswers = existingAnswer;
+    answer.userAnswer = answer.userAnswer.concat(answers);
+    answer.raters = raters;
+    await answer.save();
   } else {
     // If no answer exists, create a new answer document
-    const answer = new Answer({
+    answer = new Answer({
       userId,
       userAnswer: answers,
       raters,
     });
     await answer.save();
-    finalAnswers = answer;
   }
-  const status = await updateUserQuizStatus(
-    finalAnswers.userAnswer.lengh,
-    user
-  );
-  //TODO
+  //-------------------B3 end-------------------//
+  //-------------------B4-------------------//
+  //@desc --> update user quiz status to check if he finished the quiz
+  //income --> to check whether i should send emails to raters ot not
+  let message = "";
+  const status = await updateUserQuizStatus(answer.userAnswer, user);
+
   // send to raters email with this answerId
   if (status === "finished") {
-    await SendEmailsToRaters(finalAnswers, userEmail);
-    finalAnswers.isUserAnserCompleted = 1;
-    await finalAnswers.save();
+    await SendEmailsToRaters(answer, userEmail);
+    answer.isUserAnserCompleted = 1;
+    await answer.save();
     // can i update answer here and save again ??
     message = "تم انهاء الاختبار بنجاح وتم ارسال رساله الي المقيمين لتقييمك";
   } else {
     message = "تم تسجيل الاجابات الحاليه ,لا تنسي تكمله الاختبار";
   }
+  //-------------------B4 end-------------------//
 
+  //send response
   return res.status(200).json({ status: "success", message });
 });
 //--------------------------------------------------------------------------------------//
@@ -533,6 +551,13 @@ exports.getAnsweredQuestions = asyncHandler(async (userId) => {
   }
   let index = 0;
   const userAnswers = await Answer.find({ userId });
+  // C1 that's mean this is the first time he take quiz
+  // C2  that's mean this is the second time he take quiz
+  if (userAnswers.length === 0  || (user.retakeQuizAt && userAnswers.length===1) ) {
+    return [];
+  }
+  
+
   // use cannot take second quiz unless he took the first one
   if (userAnswers.length > 1) {
     index = 1;
@@ -574,7 +599,7 @@ const SendEmailsToRaters = async (answer, userEmail) => {
   return true;
 };
 //--------------------------------------------------------------------------------------------------------------//
-//test it 
+//test it
 exports.SendEmailToRater = async (req, res) => {
   const { raterEmail, raterName, answerDocId } = req.body;
 
@@ -653,13 +678,15 @@ exports.upload = multer({
 //--------------------------------------------------------------------------------------------------------------//
 //@desc update user quiz status
 //@use  in answerService , to update user quiz status
+//params answeredQuestions:number     user:object
 const updateUserQuizStatus = async (answeredQuestions, user) => {
   //check the desired question = the answered question
-
+  console.log(user);
   const questions = await Questions.find({
     section: { $in: user.allowed_keys },
   });
-  if (answeredQuestions.length === questions) {
+  console.log(questions.length + " :: " + answeredQuestions.length);
+  if (questions.length == answeredQuestions.length) {
     //update user quiz status to finished
     user.quizStatus = "finished";
     await user.save();
@@ -673,10 +700,19 @@ const updateUserQuizStatus = async (answeredQuestions, user) => {
 //--------------------------------------------------------------------------------------------------------------//
 // function to update and check if anser isCompleted
 exports.updateIsRaterAnsersCompleted = async (answerDoc) => {
-  if (answerDoc.raters.length === 3) {
+  let flag = true;
+  answerDoc.raters.forEach((rater) => {
+    if (!rater.answers || rater.answers.length === 0) {
+      flag = false;
+    }
+  });
+
+  if (flag) {
     answerDoc.isRatersAnserCompleted = 1;
     await answerDoc.save();
-    return 1;
+    return true;
+  } else {
+    return false;
   }
 };
 //--------------------------------------------------------------------------------------------------------------//
@@ -688,7 +724,7 @@ exports.checkUserReport = async (userId) => {
       userAnswers[0].isUserAnserCompleted === true &&
       userAnswers[0].isRatersAnserCompleted === true &&
       userAnswers[1].isUserAnserCompleted === true &&
-      userAnswers[0].isRatersAnserCompleted === true
+      userAnswers[1].isRatersAnserCompleted === true
     ) {
       return true;
     }

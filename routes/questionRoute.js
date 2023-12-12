@@ -12,11 +12,16 @@ const {
   updateQuestion,
   deleteQuestion,
   takeTest,
+  takeTestForRater,
 } = require("../services/questionService");
+const { checkRaterAuth } = require("../middlewares/answerMiddleware");
 
 const router = express.Router();
 
 router.route("/takeTest").get(authServices.protect, takeTest);
+router
+  .route("/takeRaterTest")
+  .put(authServices.protect, checkRaterAuth, takeTestForRater);
 router
   .route("/")
   .get(getQuestions)
@@ -27,7 +32,7 @@ router
     createQuestion
   );
 router
-  .route("/:id/")
+  .route("/:id")
   .get(authServices.protect, idValidator, getQuestion)
   .put(
     authServices.protect,

@@ -8,11 +8,29 @@ const generateToken = require("../utils/generateToken");
 //@desc get list of users
 //@route GET /api/v1/users
 //@access private
-exports.getUsers = factory.getALl(User);
+exports.getUsers = asyncHandler(async (req, res) => {
+  const user = await User.find().populate({
+    path: "allowed_keys",
+    select: "name",
+  });
+  if (!user) {
+    throw new ApiError(`لا يوجد مستخدمين`, 404);
+  }
+  return res.status(200).json({ status: "success", data: user });
+});
 //@desc get specific User by id
 //@route GET /api/v1/User/:id
 //@access private
-exports.getUser = factory.getOne(User);
+exports.getUser = asyncHandler(async (req, res) => {
+  const user = await User.findById(req.params.id).populate({
+    path: "allowed_keys",
+    select: "name",
+  });
+  if (!user) {
+    throw new ApiError(`User not found with id of ${req.params.id}`, 404);
+  }
+  return res.status(200).json({ status: "success", data: user });
+});
 //@desc generate code for user
 //@route POST /api/v1/users
 //@access private
@@ -32,14 +50,14 @@ function generateNumber(char) {
 exports.createUser = asyncHandler(async (req, res, next) => {
   //1-create user
   const code = generateNumber(req.body.name.charAt(0).toUpperCase());
-  console.log(code);
+
   const user = await User.create({
     name: req.body.name,
     email: req.body.email,
     code,
     ratersEmails: req.body.ratersEmails,
     organization: req.body.organization,
-    alllowed_keys: req.body.alllowed_keys,
+    allowed_keys: req.body.allowed_keys,
   });
   res.status(201).json({ data: user });
 });
@@ -105,38 +123,40 @@ exports.availUserTakeQuiz = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const user = await User.findOne({ _id: id });
   if (!user) {
-    return res.status(401).json({ status: "faild", msg: "user not found" });
-  }
-  if (user.quizStatus === "ready" && !user.quizTakenAt) {
     return res
       .status(401)
-      .json({
-        status: "faild",
-        msg: "المستخدم بالفعل جاهز لأخذ الاختبار القبلي ",
-      });
-  } else if (user.quizStatus === "inProgress" && !user.quizTakenAt) {
+      .json({ status: "faild", msg: "هذا المستخدم غير موجود" });
+  }
+  if (user.quizStatus === "ready" && !user.retakeQuizAt) {
+    return res.status(401).json({
+      status: "faild",
+      msg: "المستخدم بالفعل جاهز لأخذ الاختبار القبلي ",
+    });
+  }
+  if (user.quizStatus === "inProgress" && !user.retakeQuizAt) {
     return res
       .status(401)
       .json({ status: "faild", msg: "المستخدم لم يتم انهاء الاختبار القبلي " });
-  } else if (user.quizStatus === "ready" && user.quizTakenAt) {
-    return res
-      .status(401)
-      .json({
-        status: "faild",
-        msg: "المستخدم بالفعل جاهز لأخذ الاختبار البعدي ",
-      });
-  } else if (user.quizStatus === "inProgress" && user.quizTakenAt) {
+  }
+  if (user.quizStatus === "ready" && user.retakeQuizAt) {
+    return res.status(401).json({
+      status: "faild",
+      msg: "المستخدم بالفعل جاهز لأخذ الاختبار البعدي ",
+    });
+  }
+  if (user.quizStatus === "inProgress" && user.retakeQuizAt) {
     return res
       .status(401)
       .json({ status: "faild", msg: "المستخدم لم يتم انهاء الاختبار البعدي " });
   }
 
   user.quizStatus = "ready";
-  user.quizTakenAt = Date.now();
+  user.retakeQuizAt = Date.now();
   user.save();
-  return res
-    .status(200)
-    .json({ status: "success", msg: "user can take test again" });
+  return res.status(200).json({
+    status: "success",
+    msg: "يستطيع الطالب ان يأحذ الاختبار مره اخري",
+  });
 });
 //---------------------------------------------------------------------------------------------
 ///@desc add keys to user
@@ -188,6 +208,7 @@ exports.removeKeysFromUser = asyncHandler(async (req, res) => {
     user.allowed_keys = user.allowed_keys.filter(
       (key) => !keys.includes(key.toString())
     );
+    console.log(user.allowed_keys);
     await user.save();
 
     return res.status(200).json({ status: "success", data: user });

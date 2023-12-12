@@ -61,13 +61,7 @@ userShcema.pre("save", async function (next) {
   this.password = await bcrypt.hash(this.password, 12);
   next();
 });
-// userShcema.pre("save", async function (next) {
-//   //if code field is not modified go to next middleware
-//   if (!this.isModified("code")) return next();
-//   // Hashing user code
-//   this.code = await bcrypt.hash(this.code, 12);
-//   next();
-// });
+
 userShcema.pre("save", async function (next) {
   //if rateCode field is not modified go to next middleware
   if (!this.isModified("rateCode")) return next();
@@ -75,5 +69,12 @@ userShcema.pre("save", async function (next) {
   this.rateCode = await bcrypt.hash(this.rateCode, 12);
   next();
 });
+
+// userShcema.pre(/^find/, function (next) {
+//   this.populate({ path: "allowed_keys", select: "name" });
+//   next();
+// });
+
+
 const User = mongoose.model("User", userShcema);
 module.exports = User;

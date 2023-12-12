@@ -2,12 +2,12 @@
 const fs = require("fs");
 const asyncHandler = require("express-async-handler");
 const { v4: uuidv4 } = require("uuid");
-const bcrypt = require("bcrypt");
+const bcrypt = require("bcryptjs");
 const Organization = require("../models/organizationModel");
 const User = require("../models/userModel");
 const factory = require("./handllerFactory");
 const { uploadSingleImage } = require("../middlewares/uploadImageMiddleware");
-const ApiError = require("../utils/ApiError");
+const ApiError = require("../utils/apiError");
 
 //upload Singel image
 exports.uploadOrgLogo = uploadSingleImage("logo");

@@ -1,5 +1,6 @@
 const Question = require("../models/questionModel");
 const Answer = require("../models/answerModel");
+const User = require("../models/userModel");
 const factory = require("./handllerFactory");
 const { getAnsweredQuestions } = require("./answerService");
 
@@ -30,19 +31,26 @@ exports.deleteQuestion = factory.deleteOne(Question);
 
 exports.takeTest = async (req, res) => {
   // get questions which it's key exists in req.user.allowed_keys
+
   const questions = await Question.find({
     section: { $in: req.user.allowed_keys },
   });
+
   const answeredQuestionIds = await getAnsweredQuestions(req.user._id);
-  //help : it don't filter
-  // const filteredQuestions = questions.filter(question => !answeredQuestionIds.includes(question._id));
+  // if user didn't answer any question return all questions
+  if (answeredQuestionIds.length === 0)
+    return res.status(200).json({
+      status: "success",
+      length: questions.length,
+      questions: questions,
+    });
+  // filter questions that user didn't answer
   const filteredQuestions = questions.filter((question) => {
     const questionIdString = question._id.toString();
     return !answeredQuestionIds.some(
       (answeredQuestion) => answeredQuestion._id.toString() === questionIdString
     );
   });
-  console.log(filteredQuestions);
   // get key of each group of questions share same key and add it to the question object
   const keyQuestions = {};
   filteredQuestions.forEach((question) => {
@@ -53,26 +61,29 @@ exports.takeTest = async (req, res) => {
   });
   //help : select each key with Key model and replace key object instead of id and inside it array of objects
 
-  console.log(keyQuestions);
   return res.status(200).json({
     status: "success",
-    data: {
-      questions: keyQuestions,
-    },
+    length: keyQuestions.length,
+    questions: keyQuestions,
   });
 };
+//------------------------------------------------------------//
 //@desc get list of Questions that
 //@route GET /api/v1/Questions/takeTest
 //@Actor Rater
 
 exports.takeTestForRater = async (req, res) => {
   // get answer doc with req.body.docId t
-  const userAnswer = await Answer.find({ _id: req.body.docId });
+  const userAnswer = await Answer.findOne({ _id: req.body.docId });
+  console.log(userAnswer);
   //get userId form answer doc
-  const userId = userAnswer.user;
+  const {userId} = userAnswer;
   //get user from User model with userId
-  const user = await User.find({ _id: userId });
+  const user = await User.findById(userId);
+ 
   //get allowed_keys from user
+
+  // eslint-disable-next-line camelcase
   const { allowed_keys } = user;
   //get questions with allowed_keys
   const questions = await Question.find({ section: { $in: allowed_keys } });

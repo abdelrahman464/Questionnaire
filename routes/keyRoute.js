@@ -25,7 +25,7 @@ router
     createKey
   );
 router
-  .route("/:id/")
+  .route("/:id")
   .get(authServices.protect, idValidator, getKey)
   .put(
     authServices.protect,

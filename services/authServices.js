@@ -27,27 +27,27 @@ exports.login = asyncHandler(async (req, res, next) => {
   }
   //login coordinator
   else if (req.body.type === "coordinator") {
-    const org = await Organization.findOne({
-      "coordiantors.email": req.body.email,
-    });
-
+    const org = await Organization.findOne(
+      {
+        "coordiantors.email": req.body.email,
+      },
+      {
+        // Use $elemMatch projection to return only the matched coordinator
+        coordiantors: { $elemMatch: { email: req.body.email } },
+      }
+    );
     if (!org) {
-      return next(new ApiError("user not found", 401));
+      return next(new ApiError("ORG Not Found", 401));
     }
 
-    user = org.coordiantors.filter(
-      (coordinator) => coordinator.email === req.body.email
-    );
+    user = org.coordiantors[0];
 
     console.log(user);
-    if (
-      !user[0] ||
-      !(await bcrypt.compare(req.body.password, user[0].password))
-    ) {
+    if (!user || !(await bcrypt.compare(req.body.password, user.password))) {
       return next(new ApiError("incorrect password or email", 401));
     }
     //3- generate token
-    token = generateToken(user[0]._id);
+    token = generateToken(user._id);
   }
 
   //3- send response to client side
