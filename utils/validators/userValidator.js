@@ -16,9 +16,7 @@ exports.createAdminValidator = [
     .isLength({ min: 2 })
     .withMessage("too short User name")
     .isLength({ max: 100 })
-    .withMessage("too long User name")
-   ,
-
+    .withMessage("too long User name"),
   check("email")
     .notEmpty()
     .withMessage("Email required")
@@ -31,8 +29,6 @@ exports.createAdminValidator = [
         }
       })
     ),
-
-
   check("phone")
     .optional()
     .isMobilePhone()
@@ -47,9 +43,7 @@ exports.createUserValidator = [
     .isLength({ min: 2 })
     .withMessage("too short User name")
     .isLength({ max: 100 })
-    .withMessage("too long User name")
-   ,
-
+    .withMessage("too long User name"),
   check("email")
     .notEmpty()
     .withMessage("Email required")
@@ -63,24 +57,9 @@ exports.createUserValidator = [
       })
     ),
 
-  check("password")
-    .notEmpty()
-    .withMessage("password required")
-    .isLength({ min: 8 })
-    .withMessage("password must be at least 8 characters")
-    .isLength({ max: 32 })
-    .withMessage("password must be at least 8 characters")
-    .custom((password, { req }) => {
-      if (password !== req.body.passwordConfirm) {
-        throw new Error("password does not match");
-      }
-      return true;
-    }),
-
-  check("passwordConfirm").notEmpty().withMessage("password required"),
-
   check("phone")
-    .optional()
+    .notEmpty()
+    .withMessage("phone required")
     .isMobilePhone()
     .withMessage("Invalid phone number "),
 
@@ -88,9 +67,7 @@ exports.createUserValidator = [
 ];
 exports.updateUserValidator = [
   check("id").isMongoId().withMessage("Invalid User id format"),
-  body("name")
-    .optional()
-    ,
+  body("name").optional(),
   check("email")
     .optional()
     .isEmail()
@@ -106,7 +83,6 @@ exports.updateUserValidator = [
     .optional()
     .isMobilePhone()
     .withMessage("Invalid phone number "),
-
 
   validatorMiddleware,
 ];

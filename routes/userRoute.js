@@ -10,6 +10,7 @@ const {
 } = require("../utils/validators/userValidator");
 const authServices = require("../services/authServices");
 const {
+  signUp,
   getUsers,
   createUser,
   getUser,
@@ -23,6 +24,7 @@ const {
   addKeysToUser,
   changeUserOrganization, // Added changeUserOrganization service
 } = require("../services/userService");
+const { route } = require("./answerRoute");
 
 const router = express.Router();
 
@@ -50,6 +52,8 @@ router
     createUserValidator,
     createUser
   );
+router.post("/signUp",createUserValidator, signUp);
+
 router
   .route("/:id")
   .get(
@@ -73,17 +77,22 @@ router
 
 router
   .route("/availUserToTakeQuiz/:id")
-  .put(authServices.protect, authServices.allowedTo("admin"), availUserTakeQuiz);
+  .put(
+    authServices.protect,
+    authServices.allowedTo("admin"),
+    availUserTakeQuiz
+  );
 
 router
   .route("/removeKeysFromUser/:id")
-  .put(authServices.protect, authServices.allowedTo("admin"), removeKeysFromUser);
+  .put(
+    authServices.protect,
+    authServices.allowedTo("admin"),
+    removeKeysFromUser
+  );
 
 router
   .route("/addKeysToUser/:id")
   .put(authServices.protect, authServices.allowedTo("admin"), addKeysToUser);
 
-
 module.exports = router;
-
-

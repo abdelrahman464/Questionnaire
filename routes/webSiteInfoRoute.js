@@ -20,7 +20,7 @@ router
   );
 router
   .route("/:id/")
-  .get(authServices.protect, getWebSiteInfo)
+  .get(getWebSiteInfo)
   .put(
     authServices.protect,
     authServices.allowedTo("admin"),

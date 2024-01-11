@@ -22,6 +22,7 @@ const userShcema = new mongoose.Schema(
     quizStatus: {
       type: String,
       enum: ["ready", "inProgress", "finished"],
+      default: "ready",
     },
     retakeQuizAt: {
       type: Date,
@@ -70,10 +71,10 @@ userShcema.pre("save", async function (next) {
   next();
 });
 
-// userShcema.pre(/^find/, function (next) {
-//   this.populate({ path: "allowed_keys", select: "name" });
-//   next();
-// });
+userShcema.pre(/^find/, function (next) {
+  this.populate({ path: "organization", select: "name" });
+  next();
+});
 
 
 const User = mongoose.model("User", userShcema);

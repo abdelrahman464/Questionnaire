@@ -44,6 +44,7 @@ exports.takeTest = async (req, res) => {
       length: questions.length,
       questions: questions,
     });
+    
   // filter questions that user didn't answer
   const filteredQuestions = questions.filter((question) => {
     const questionIdString = question._id.toString();
@@ -51,20 +52,11 @@ exports.takeTest = async (req, res) => {
       (answeredQuestion) => answeredQuestion._id.toString() === questionIdString
     );
   });
-  // get key of each group of questions share same key and add it to the question object
-  const keyQuestions = {};
-  filteredQuestions.forEach((question) => {
-    if (!keyQuestions[question.section]) {
-      keyQuestions[question.section] = [];
-    }
-    keyQuestions[question.section].push(question);
-  });
-  //help : select each key with Key model and replace key object instead of id and inside it array of objects
 
   return res.status(200).json({
     status: "success",
-    length: keyQuestions.length,
-    questions: keyQuestions,
+    length: filteredQuestions.length,
+    questions: filteredQuestions,
   });
 };
 //------------------------------------------------------------//
@@ -77,10 +69,10 @@ exports.takeTestForRater = async (req, res) => {
   const userAnswer = await Answer.findOne({ _id: req.body.docId });
   console.log(userAnswer);
   //get userId form answer doc
-  const {userId} = userAnswer;
+  const { userId } = userAnswer;
   //get user from User model with userId
   const user = await User.findById(userId);
- 
+
   //get allowed_keys from user
 
   // eslint-disable-next-line camelcase

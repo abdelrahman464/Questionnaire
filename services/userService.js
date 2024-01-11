@@ -49,15 +49,29 @@ function generateNumber(char) {
 
 exports.createUser = asyncHandler(async (req, res, next) => {
   //1-create user
+  const code = generateNumber(req.body.email.charAt(0).toUpperCase());
+
+  const user = await User.create({
+    name: req.body.name,
+    email: req.body.email,
+    code,
+    organization: req.body.organization?req.body.organization:null,
+    allowed_keys: req.body.allowed_keys,
+  });
+  res.status(201).json({ data: user });
+});
+//@desc signuo
+//@route POST /api/v1/users/signup
+//@access public
+
+exports.signUp = asyncHandler(async (req, res) => {
+  //1-create user
   const code = generateNumber(req.body.name.charAt(0).toUpperCase());
 
   const user = await User.create({
     name: req.body.name,
     email: req.body.email,
     code,
-    ratersEmails: req.body.ratersEmails,
-    organization: req.body.organization,
-    allowed_keys: req.body.allowed_keys,
   });
   res.status(201).json({ data: user });
 });

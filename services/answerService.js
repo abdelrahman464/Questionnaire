@@ -57,7 +57,7 @@ exports.saveRaterAnswers = asyncHandler(async (req, res) => {
     return res.status(200).json({
       status: "success",
       msg: "لقد تم تسجيل اجاباتك بنجاح",
-      isReportReady,
+      isReportReady: isReportReady,
     });
   } catch (error) {
     return res
@@ -145,7 +145,7 @@ exports.saveAnswers = asyncHandler(async (req, res) => {
   return res.status(200).json({ status: "success", message });
 });
 //--------------------------------------------------------------------------------------//
-
+//not used
 exports.getUserAnswersReport = asyncHandler(async (req, res) => {
   try {
     const { keyId, userId } = req.params;
@@ -245,6 +245,7 @@ exports.getUserAnswersReport = asyncHandler(async (req, res) => {
   } catch (error) {
     return res.status(400).json({
       status: `faild`,
+      error: error.message,
       msg: `user should take the quiz twice and all raters should submit their answers in both times`,
     });
   }
@@ -257,7 +258,7 @@ exports.getUserAnswers = asyncHandler(async (req, res) => {
     const user = await User.findById(userId); // Retrieve the user
 
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      return res.status(404).json({ message: "المستخدم غير موجود" });
     }
 
     // Find the user's answers and populate the associated questions
@@ -268,7 +269,7 @@ exports.getUserAnswers = asyncHandler(async (req, res) => {
     if (!userAnswers[status]) {
       return res
         .status(400)
-        .json({ status: `faild`, msg: `user didn't take the quiz` });
+        .json({ status: `faild`, msg: `انت لم تأخذ هذا الأختبار` });
     }
     // Create a response object to store the formatted answers
     const response = {};
@@ -283,23 +284,25 @@ exports.getUserAnswers = asyncHandler(async (req, res) => {
       }
       const questionText = question.text;
       const userAnswerValue = userAnswer.answer;
+      const answerText = userAnswer.answerText;
 
       // Create an object for the current question
       if (!response[question._id]) {
         response[question._id] = {
           question: questionText,
           userAnswer: userAnswerValue,
+          answerText,
           raters: [],
         };
       }
     });
+    console.log(response);
     // return res.json(userAnswers[status])
     // return res.json(response)
     // Loop through the raters' answers for the current question
     userAnswers[status].raters.forEach((rater) => {
       const raterEmail = rater.email;
       const raterName = rater.name;
-      console.log(rater.name);
 
       rater.answers.forEach((raterAnswer) => {
         const questionId = raterAnswer.questionId.toString();
@@ -307,18 +310,20 @@ exports.getUserAnswers = asyncHandler(async (req, res) => {
         // Check if the question ID exists in response
         if (response[questionId]) {
           const raterAnswerValue = raterAnswer.answer;
+          const raterAnswerText = raterAnswer.answerText;
 
           // Add the rater's answer to the current question's object
           response[questionId].raters.push({
             email: raterEmail,
             name: raterName,
             answer: raterAnswerValue,
+            raterAnswerText,
           });
-          response2.push(response[questionId]);
         }
+        // response2.push(response[questionId]);
       });
     });
-
+    response2.push(...Object.values(response));
     // Return the formatted response
     res.json(response2);
   } catch (error) {
@@ -330,9 +335,20 @@ exports.getUserAnswers = asyncHandler(async (req, res) => {
 exports.getUserAnswersReportTotal = asyncHandler(async (req, res) => {
   try {
     const userId = req.params.userId;
-
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    if (!user.retakeQuizAt && user.quizStatus !== "finished") {
+      return res
+        .status(404)
+        .json({ message: "عليك ب اكمال الاختبارين لتحصل علي التقرير الشامل" });
+    }
     // Find all keys
-    const keys = await Key.find();
+    const keys = await Key.find({ _id: { $in: user.allowed_keys } });
+    if (!keys) {
+      return res.status(404).json({ message: "keys not found" });
+    }
 
     // Initialize an array to store the results for all keys and questions
     const results = [];
@@ -382,10 +398,11 @@ exports.getUserAnswersReportTotal = asyncHandler(async (req, res) => {
         });
       });
 
-      // Calculate the average by dividing by the number of raters (assuming 3 raters)
-      questions.forEach((question) => {
-        averageRaterAnswers[question._id].before /= 3;
-      });
+      // // Calculate the average by dividing by the number of raters
+      // questions.forEach((question) => {
+      //   averageRaterAnswers[question._id].before /=
+      //     raterAnswers[0].raters.length;
+      // });
 
       // Calculate the user's second answers and update the averageRaterAnswers
       raterAnswers[1].raters.forEach((rater) => {
@@ -406,7 +423,11 @@ exports.getUserAnswersReportTotal = asyncHandler(async (req, res) => {
 
       // Calculate the average for the user's second answers
       questions.forEach((question) => {
-        averageRaterAnswers[question._id].after /= 3; // Assuming each user takes the quiz twice
+        averageRaterAnswers[question._id].before /=
+          raterAnswers[0].raters.length;
+
+        averageRaterAnswers[question._id].after /=
+          raterAnswers[1].raters.length; // Assuming each user takes the quiz twice
       });
 
       // Calculate the differences for each question and the total difference for the key
@@ -431,27 +452,27 @@ exports.getUserAnswersReportTotal = asyncHandler(async (req, res) => {
           question: question.text,
           before: {
             user: userAnswerBefore ? userAnswerBefore.answer : null,
-            raters: averageRaterAnswers[questionId].before,
+            raters: averageRaterAnswers[questionId].before.toFixed(2),
           },
           after: {
             user: userAnswerAfter ? userAnswerAfter.answer : null,
-            raters: averageRaterAnswers[questionId].after,
+            raters: averageRaterAnswers[questionId].after.toFixed(2),
           },
           avg: {
-            user: userDiff,
-            raters: ratersDiff,
+            user: userDiff.toFixed(2),
+            raters: ratersDiff.toFixed(2),
           },
         };
       });
 
       // Calculate the total differences for user and raters across all questions
-      const totalUserDiff = keyResult.reduce(
+      const totalDifference = keyResult.reduce(
         (total, question) => {
           if (question.avg.user !== null) {
-            total.user += question.avg.user;
+            total.user += Number(question.avg.user);
           }
           if (question.avg.raters !== null) {
-            total.raters += question.avg.raters;
+            total.raters += Number(question.avg.raters);
           }
           return total;
         },
@@ -486,12 +507,13 @@ exports.getUserAnswersReportTotal = asyncHandler(async (req, res) => {
           }, 0) / questions.length,
       };
 
+     
       results.push({
         key: key.name, // You can use any key identifier here
         desc: key.desc ? key.desc : null,
         questions: keyResult,
         graph: graph,
-        totalDifference: totalUserDiff,
+        totalDifference: totalDifference,
       });
     }
 
@@ -499,48 +521,12 @@ exports.getUserAnswersReportTotal = asyncHandler(async (req, res) => {
   } catch (error) {
     return res.status(400).json({
       status: "failed",
+      error: error.message,
       msg: "User should take the quiz twice, and all raters should submit their answers in both times",
     });
   }
 });
 
-//--------------------------------------------------------------------------------------------------------------//
-exports.updateRaterEmail = asyncHandler(async (req, res) => {
-  const { raterId, newEmail } = req.body;
-
-  try {
-    // 1. Find the rater document with the given docId and matching raterEmail
-    const answer = await Answer.findOne({
-      "raters._id": raterId,
-    });
-
-    // 2. Check if the rater document exists
-    if (!answer) {
-      return res
-        .status(401)
-        .json({ status: "fail", msg: "Incorrect email or id" });
-    }
-
-    // 3. Find the rater within the answer document
-    const rater = answer.raters.find((r) => r._id.toString() === raterId);
-
-    // 4. Update the rater's email
-    rater.email = newEmail;
-    rater.gotEmailAt = null; // Reset gotEmailAt
-
-    // 5. Save the updated answer document
-    await answer.save();
-
-    return res.status(200).json({
-      status: "success",
-      msg: "Rater email updated successfully",
-    });
-  } catch (error) {
-    return res
-      .status(500)
-      .json({ status: "error", msg: "Internal server error" });
-  }
-});
 //--------------------------------------------------------------------------------------------------------------//
 //@desc get list of QuestionIds that user answered
 //@use  in QuestionService , to get questions that user didn't answer yet
@@ -553,10 +539,12 @@ exports.getAnsweredQuestions = asyncHandler(async (userId) => {
   const userAnswers = await Answer.find({ userId });
   // C1 that's mean this is the first time he take quiz
   // C2  that's mean this is the second time he take quiz
-  if (userAnswers.length === 0  || (user.retakeQuizAt && userAnswers.length===1) ) {
+  if (
+    userAnswers.length === 0 ||
+    (user.retakeQuizAt && userAnswers.length === 1)
+  ) {
     return [];
   }
-  
 
   // use cannot take second quiz unless he took the first one
   if (userAnswers.length > 1) {
@@ -570,48 +558,53 @@ exports.getAnsweredQuestions = asyncHandler(async (userId) => {
 //--------------------------------------------------------------------------------------------------------------//
 const SendEmailsToRaters = async (answer, userEmail) => {
   const url = `${process.env.RATERS_URL}`;
-  answer.raters.forEach(async (rater) => {
+  for (const rater of answer.raters) {
     const raterEmail = rater.email;
 
     try {
-      let emailMessage = "";
-
-      emailMessage = `Hi ${raterEmail} 
-                        \n your friend ${userEmail} invited you to
-                        \n to rate him in a quick Quiz
-                        \n here is the link : ${url}
-                        \n use this code when you register your answer : ${answer._id}`;
+      let emailMessage = `مرحبًا ${raterEmail} 
+          \n صديقك ${userEmail} قام بدعوتك
+          \n لتقييمه في اختبار سريع
+          \n إليك الرابط : ${url}
+          \n استخدم هذا الرمز عند تسجيل إجابتك : ${answer._id}`;
 
       await sendEmail({
         to: raterEmail,
-        subject: `rate your frined ${userEmail}`,
+        subject: `rate your friend ${userEmail}`,
         text: emailMessage,
       });
 
       rater.gotEmailAt = Date.now(); // Update gotEmailAt
-
       await rater.save(); // Save the updated rater
     } catch (err) {
-      return next(new ApiError("there is a problem with sending Email", 500));
+      return next(new ApiError("There is a problem with sending Email", 500));
     }
-  });
+  }
 
   return true;
 };
 //--------------------------------------------------------------------------------------------------------------//
 //test it
 exports.SendEmailToRater = async (req, res) => {
-  const { raterEmail, raterName, answerDocId } = req.body;
+  const { raterEmail, userId, docId } = req.body;
+  const user = await User.findOne({ _id: userId });
+  if (!user) {
+    return res
+      .status(400)
+      .json({ status: "faild", msg: "هذا الطالب غير موجود" });
+  }
 
   const url = `${process.env.RATERS_URL}`;
 
   try {
     let emailMessage = "";
 
-    emailMessage = `مرحباً ${raterName} 
-          \n صديقك دعاك لتقييمه في استبيان سريع
-          \n هذا هو الرابط: ${url}
-          \n استخدم هذا الرمز عند تسجيل إجابتك: ${answerDocId}`;
+    emailMessage = ` مرحبًا ${raterEmail} 
+           \n صديقك ${user.email} قام بدعوتك
+           \n لتقييمه في اختبار سريع
+           \n إليك الرابط : ${url}
+           \n استخدم هذا الرمز عند تسجيل إجابتك :
+            ${docId}`;
 
     await sendEmail({
       to: raterEmail,
@@ -621,18 +614,18 @@ exports.SendEmailToRater = async (req, res) => {
 
     //update gotEmailAt
     await Answer.findOneAndUpdate(
-      { _id: answerDocId, "raters.email": raterEmail },
+      { _id: docId, "raters.email": raterEmail },
       { $set: { "raters.$.gotEmailAt": Date.now() } }
     );
 
     return res.status(200).json({
       status: "success",
-      msg: "Email sent successfully",
+      msg: "تم ارسال الايميل بنجاح",
     });
   } catch (err) {
     return res
       .status(500)
-      .json({ status: "error", msg: "Internal server error" });
+      .json({ status: "error", msg: err.message || "Internal server error" });
   }
 };
 //--------------------------------------------------------------------------------------------------------------//
@@ -733,3 +726,85 @@ exports.checkUserReport = async (userId) => {
   }
 };
 //--------------------------------------------------------------------------------------------------------------//
+exports.getAnswerEmails = asyncHandler(async (req, res) => {
+  const { userId } = req.params;
+  const answers = await Answer.find({ userId });
+
+  if (!answers) {
+    return res
+      .status(400)
+      .json({ status: "faild", msg: "الطالب لم يأخذ الأختبار" });
+  }
+
+  const data1 = [];
+  const data2 = [];
+  let docId1 = null;
+  let docId2 = null;
+
+  if (answers[0]) {
+    answers[0].raters.forEach((rater) => {
+      data1.push({
+        raterId: rater._id,
+        email: rater.email,
+        name: rater.name,
+        gotEmailAt: rater.gotEmailAt,
+      });
+    });
+    docId1 = answers[0]._id;
+  }
+
+  if (answers[1]) {
+    answers[1].raters.forEach((rater) => {
+      data2.push({
+        raterId: rater._id,
+        email: rater.email,
+        name: rater.name,
+        gotEmailAt: rater.gotEmailAt,
+      });
+    });
+    docId2 = answers[1]._id;
+  }
+
+  return res.status(200).json({ userId, docId1, data1, docId2, data2 });
+});
+//--------------------------------------------------------------------------------------------------------------//
+exports.updateRaterEmail = asyncHandler(async (req, res) => {
+  const { raterId, newEmail, newName } = req.body;
+
+  try {
+    // 1. Find the rater document with the given docId and matching raterEmail
+    const answer = await Answer.findOne({
+      "raters._id": raterId,
+    });
+
+    // 2. Check if the rater document exists
+    if (!answer) {
+      return res
+        .status(401)
+        .json({ status: "fail", msg: "Incorrect email or id" });
+    }
+
+    // 3. Find the rater within the answer document
+    const rater = answer.raters.find((r) => r._id.toString() === raterId);
+
+    // 4. Update the rater's email
+    rater.email = newEmail;
+    if (newName) {
+      rater.name = newName;
+    }
+    rater.answers = []; // Reset answers
+    rater.gotEmailAt = null; // Reset gotEmailAt
+
+    // 5. Save the updated answer document
+    await answer.save();
+
+    return res.status(200).json({
+      status: "success",
+      msg: "Rater email updated successfully",
+    });
+  } catch (error) {
+    return res
+      .status(500)
+      .json({ status: "error", msg: "Internal server error" });
+  }
+});

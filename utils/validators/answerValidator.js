@@ -84,9 +84,7 @@ exports.getUserAnswerValidator = [
     .withMessage("Invalid userId format")
     .custom(async (userId, { req }) => {
       if (userId !== req.user._id.toString() && req.user.role !== "admin") {
-        return Promise.reject(
-          new Error("You are not allowed to view this answer report")
-        );
+        return Promise.reject(new Error("غير مسموح لك ب استعراض هذا التقرير"));
       }
     }),
   check("status")
@@ -103,17 +101,14 @@ exports.getUserAnswerValidator = [
 exports.UserAnswersReportValidator = [
   check("userId")
     .isMongoId()
-    .withMessage("Hello")
+    .withMessage("invalid userId format")
     .custom(async (userId, { req }) => {
-      // console.log(userId);
-
       if (userId !== req.user._id.toString() && req.user.role !== "admin") {
         return Promise.reject(
           new Error("You are not allowed to view this report")
         );
       }
       const answerCount = await Answer.find({ userId: userId });
-      // console.log(answerCount);
       return answerCount.length === 2;
     })
 
@@ -153,15 +148,11 @@ exports.sendEmailToRaterValidator = [
     .withMessage("raterEmail is required")
     .isEmail()
     .withMessage("raterEmail must be a valid email"),
-  check("answerDocId")
+  check("docId")
     .notEmpty()
-    .withMessage("answerDocId is required")
+    .withMessage("docId is required")
     .isMongoId()
     .withMessage("Invalid docId format"),
-  check("raterName")
-    .notEmpty()
-    .withMessage("raterName is required")
-    .isString()
-    .withMessage("raterName must be a string"),
+
   validatorMiddleware,
 ];

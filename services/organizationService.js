@@ -67,16 +67,18 @@ exports.addCoordiantor = async (req, res, next) => {
     // Replace the plain text password with the hashed one
     coordiantor.password = hashedPassword;
 
-    const organization = await Organization.findById(id);
+    // const organization = await Organization.findById(id);
+
+    const organization = await Organization.findByIdAndUpdate(
+      id,
+      {
+        $addToSet: { coordiantors: coordiantor },
+      },
+      { new: true }
+    );
     if (!organization) {
       return next(new AppError("No organization found with that ID", 404));
     }
-
-    organization.coordiantors.push(coordiantor);
-    await organization.save();
-
-    // Avoid sending the hashed password in the response
-    coordiantor.password = undefined;
 
     res.status(200).json({
       status: "success",
@@ -135,7 +137,10 @@ exports.getOrgStudents = async (req, res) => {
     if (!organization) {
       return next(new ApiError("انت لا تنتمي لاي منظمه", 404));
     }
-    const users = await User.find({ organization: organization._id });
+    const users = await User.find({ organization: organization._id }).populate({
+      path: "allowed_keys",
+      select: "name",
+    });
 
     return res.status(200).json({
       status: "success",

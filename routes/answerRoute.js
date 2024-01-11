@@ -3,13 +3,13 @@ const authServices = require("../services/authServices");
 const {
   saveAnswers,
   saveRaterAnswers,
-  getUserAnswersReport,
   getUserAnswers,
   getUserAnswersReportTotal,
   updateRaterEmail,
   SendEmailToRater,
   SendReportDocToUser,
   upload,
+  getAnswerEmails,
 } = require("../services/answerService");
 
 const {
@@ -20,9 +20,8 @@ const {
   sendEmailToRaterValidator,
 } = require("../utils/validators/answerValidator");
 
-
 const router = express.Router();
-
+//-------------------------------------------------------------------------
 router
   .route("/saveanswers")
   .post(
@@ -31,17 +30,10 @@ router
     userAnswerValidator,
     saveAnswers
   );
-//make route to get raterTest  
+//-------------------------------------------------------------------------
+//make route to get raterTest
 router.route("/saveRateranswers").post(raterAnswerValidator, saveRaterAnswers);
-
-router
-  .route("/getUserAnswersReport/:keyId/:userId")
-  .get(
-    authServices.protect,
-    authServices.allowedTo("user", "admin"),
-    UserAnswersReportValidator,
-    getUserAnswersReport
-  );
+//-------------------------------------------------------------------------
 router
   .route("/getUserAnswersReportTotal/:userId")
   .get(
@@ -50,6 +42,7 @@ router
     UserAnswersReportValidator,
     getUserAnswersReportTotal
   );
+//-------------------------------------------------------------------------
 router
   .route("/getUserAnswers/:userId/:status")
   .get(
@@ -58,8 +51,23 @@ router
     getUserAnswerValidator,
     getUserAnswers
   );
-router.put("/updateRaterEmail", updateRaterEmail);
+//-------------------------------------------------------------------------
+router
+  .route("/getAnswerEmails/:userId")
+  .get(
+    authServices.protect,
+    authServices.allowedTo("admin", "user"),
+    getAnswerEmails
+  );
+//-------------------------------------------------------------------------
+router.put(
+  "/updateRaterEmail",
+  authServices.protect,
+  authServices.allowedTo("admin", "user"),
+  updateRaterEmail
+);
 //dont forget to add remove user
+//-------------------------------------------------------------------------
 router.put(
   "/SendEmailToRater",
   authServices.protect,
@@ -67,6 +75,7 @@ router.put(
   sendEmailToRaterValidator,
   SendEmailToRater
 );
+//-------------------------------------------------------------------------
 router.put(
   "/SendReportDocToUser",
   authServices.protect,
@@ -74,5 +83,5 @@ router.put(
   upload,
   SendReportDocToUser
 );
-
+//-------------------------------------------------------------------------
 module.exports = router;
