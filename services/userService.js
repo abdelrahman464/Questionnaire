@@ -55,7 +55,8 @@ exports.createUser = asyncHandler(async (req, res, next) => {
     name: req.body.name,
     email: req.body.email,
     code,
-    organization: req.body.organization?req.body.organization:null,
+    phone: req.body.phone,
+    organization: req.body.organization ? req.body.organization : null,
     allowed_keys: req.body.allowed_keys,
   });
   res.status(201).json({ data: user });
@@ -71,6 +72,7 @@ exports.signUp = asyncHandler(async (req, res) => {
   const user = await User.create({
     name: req.body.name,
     email: req.body.email,
+    phone: req.body.phone,
     code,
   });
   res.status(201).json({ data: user });

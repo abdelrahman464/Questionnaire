@@ -1,5 +1,6 @@
 const bcrypt = require("bcryptjs");
 const mongoose = require("mongoose");
+const Answer = require("./answerModel");
 
 const userShcema = new mongoose.Schema(
   {
@@ -63,19 +64,15 @@ userShcema.pre("save", async function (next) {
   next();
 });
 
-userShcema.pre("save", async function (next) {
-  //if rateCode field is not modified go to next middleware
-  if (!this.isModified("rateCode")) return next();
-  // Hashing user rateCode
-  this.rateCode = await bcrypt.hash(this.rateCode, 12);
-  next();
-});
-
 userShcema.pre(/^find/, function (next) {
   this.populate({ path: "organization", select: "name" });
   next();
 });
 
+userShcema.pre("remove", async function (next) {
+  await Answer.deleteMany({ userId: this._id });
+  next();
+});
 
 const User = mongoose.model("User", userShcema);
 module.exports = User;

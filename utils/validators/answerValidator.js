@@ -11,10 +11,9 @@ exports.userAnswerValidator = [
     .isArray()
     .withMessage("User answer must be an array"),
   check("raterEmails")
-    .notEmpty()
-    .withMessage("raterEmails is required")
-    .isArray({ min: 3, max: 3 })
-    .withMessage("raterEmails must be an array with exactly 3 names")
+    .optional()
+    .isArray({ min: 1, max: 3 })
+    .withMessage("raterEmails must be an array of 1 to 3 emails")
     .custom((raterEmails) => {
       // Validate each email in the raterEmails array
       // eslint-disable-next-line no-restricted-syntax
@@ -25,8 +24,7 @@ exports.userAnswerValidator = [
         }
       }
       return true;
-    }),
-  check("raterEmails")
+    })
     .custom((raterEmails) => {
       const uniqueEmails = new Set(raterEmails);
       return uniqueEmails.size === raterEmails.length;
@@ -110,36 +108,7 @@ exports.UserAnswersReportValidator = [
       }
       const answerCount = await Answer.find({ userId: userId });
       return answerCount.length === 2;
-    })
-
-    // Check if the answers of raters in each document are not empty
-    .custom(async (userId) => {
-      const userAnswers = await Answer.find({ userId });
-      if (!userAnswers.length === 2) {
-        return Promise.reject(new Error("You have to take quiz twice"));
-      }
-      for (const userAnswer of userAnswers) {
-        for (const rater of userAnswer.raters) {
-          if (rater.answers.length === 0) {
-            return Promise.reject(
-              new Error("One or more of raters doesn't have answer")
-            );
-          }
-        }
-      }
-
-      return true; // All documents have non-empty `raters` answers arrays
     }),
-  // .custom((userId, { req }) => {
-  //   if (
-  //     userId.toString() !== req.user._id.toString() &&
-  //     req.user.role !== "admin"
-  //   ) {
-  //     return Promise.reject(
-  //       new Error("Your are not allowed to perform this action")
-  //     );
-  //   }
-  // }),
   validatorMiddleware,
 ];
 exports.sendEmailToRaterValidator = [

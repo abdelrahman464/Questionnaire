@@ -82,9 +82,8 @@ exports.saveAnswers = asyncHandler(async (req, res) => {
       .json({ status: "لا يمكنك اخذ الاختبار مره اخري حتي يأذن لك الادمن" });
   }
 
-  const userEmail = user.email;
   //TODO add emails of raters
-  let raters = raterEmails.map((email, index) => ({
+  let raters = raterEmails?.map((email, index) => ({
     email: email.toLowerCase(),
     name: raterNames[index], // Assuming raterNames has the corresponding names
   }));
@@ -131,7 +130,9 @@ exports.saveAnswers = asyncHandler(async (req, res) => {
 
   // send to raters email with this answerId
   if (status === "finished") {
-    await SendEmailsToRaters(answer, userEmail);
+    if (answer.raters.length !== 0) {
+      await SendEmailsToRaters(answer, user.name);
+    }
     answer.isUserAnserCompleted = 1;
     await answer.save();
     // can i update answer here and save again ??
@@ -143,112 +144,6 @@ exports.saveAnswers = asyncHandler(async (req, res) => {
 
   //send response
   return res.status(200).json({ status: "success", message });
-});
-//--------------------------------------------------------------------------------------//
-//not used
-exports.getUserAnswersReport = asyncHandler(async (req, res) => {
-  try {
-    const { keyId, userId } = req.params;
-    // Find all questions for the given key
-    const questions = await Questions.find({ section: keyId });
-
-    // Find the user's answers for the given key
-    const userAnswers = await Answer.find({
-      userId: userId,
-      "userAnswer.questionId": { $in: questions.map((q) => q._id) },
-    }).populate("userId");
-
-    // Find the raters' answers for the given key
-    const raterAnswers = await Answer.find({
-      userId: userId,
-      "raters.answers.questionId": { $in: questions.map((q) => q._id) },
-    });
-    // return res.json({"assx":userAnswers,"ratersssss":raterAnswers})
-    // Create a map to store the average raters' answers for each question
-    const averageRaterAnswers = {};
-
-    // Initialize the averageRaterAnswers map
-    questions.forEach((question) => {
-      averageRaterAnswers[question._id] = {
-        before: 0,
-        after: 0,
-      };
-    });
-
-    // Calculate the average answers of raters for each question
-
-    raterAnswers[0].raters.forEach((rater) => {
-      rater.answers.forEach((ans) => {
-        const questionId = ans.questionId.toString();
-
-        // Ensure there's an entry for this questionId
-        if (!averageRaterAnswers[questionId]) {
-          averageRaterAnswers[questionId] = {
-            before: 0,
-            after: 0,
-          };
-        }
-
-        averageRaterAnswers[questionId].before += ans.answer;
-      });
-    });
-
-    // Calculate the average by dividing by the number of raters (assuming 3 raters)
-    questions.forEach((question) => {
-      averageRaterAnswers[question._id].before /= 3;
-    });
-    // Calculate the user's second answers and update the averageRaterAnswers
-    raterAnswers[1].raters.forEach((rater) => {
-      rater.answers.forEach((ans) => {
-        const questionId = ans.questionId.toString();
-
-        // Ensure there's an entry for this questionId
-        if (!averageRaterAnswers[questionId]) {
-          averageRaterAnswers[questionId] = {
-            before: 0,
-            after: 0,
-          };
-        }
-
-        averageRaterAnswers[questionId].after += ans.answer;
-      });
-    });
-
-    // Calculate the average for the user's second answers
-    questions.forEach((question) => {
-      averageRaterAnswers[question._id].after /= 3; // Assuming each user takes the quiz twice
-    });
-
-    // Return the result
-    const result = questions.map((question) => {
-      const questionId = question._id.toString();
-      const userAnswerBefore = userAnswers[0]?.userAnswer.find((ans) =>
-        ans.questionId.equals(question._id)
-      );
-      const userAnswerAfter = userAnswers[1]?.userAnswer.find((ans) =>
-        ans.questionId.equals(question._id)
-      );
-
-      return {
-        question: question.text,
-        before: {
-          user: userAnswerBefore ? userAnswerBefore.answer : null,
-          raters: averageRaterAnswers[questionId].before,
-        },
-        after: {
-          user: userAnswerAfter ? userAnswerAfter.answer : null,
-          raters: averageRaterAnswers[questionId].after,
-        },
-      };
-    });
-    return res.status(200).json(result);
-  } catch (error) {
-    return res.status(400).json({
-      status: `faild`,
-      error: error.message,
-      msg: `user should take the quiz twice and all raters should submit their answers in both times`,
-    });
-  }
 });
 //--------------------------------------------------------------------------------------//
 //first second ?  ?  ?  ?
@@ -334,16 +229,18 @@ exports.getUserAnswers = asyncHandler(async (req, res) => {
 //--------------------------------------------------------------------------------------------------------------//
 exports.getUserAnswersReportTotal = asyncHandler(async (req, res) => {
   try {
-    const userId = req.params.userId;
+    const { userId } = req.params;
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
+    //check if user took the two exam
     if (!user.retakeQuizAt && user.quizStatus !== "finished") {
       return res
         .status(404)
         .json({ message: "عليك ب اكمال الاختبارين لتحصل علي التقرير الشامل" });
     }
+
     // Find all keys
     const keys = await Key.find({ _id: { $in: user.allowed_keys } });
     if (!keys) {
@@ -352,84 +249,73 @@ exports.getUserAnswersReportTotal = asyncHandler(async (req, res) => {
 
     // Initialize an array to store the results for all keys and questions
     const results = [];
-
     // Iterate over each key
     for (const key of keys) {
       // Find all questions for the current key
       const questions = await Questions.find({ section: key._id });
-
+      // if(!questions){
+      //   continue;
+      // }
       // Find the user's answers for the current key
       const userAnswers = await Answer.find({
         userId: userId,
         "userAnswer.questionId": { $in: questions.map((q) => q._id) },
       });
-
+      console.log('1'+userAnswers);
       // Find the raters' answers for the current key
       const raterAnswers = await Answer.find({
         userId: userId,
         "raters.answers.questionId": { $in: questions.map((q) => q._id) },
       });
-
+      console.log('2'+raterAnswers);
       // Create a map to store the average raters' answers for each question
       const averageRaterAnswers = {};
 
-      // Initialize the averageRaterAnswers map
-      questions.forEach((question) => {
-        averageRaterAnswers[question._id] = {
-          before: 0,
-          after: 0,
-        };
-      });
-
-      // Calculate the average answers of raters for each question
-      raterAnswers[0].raters.forEach((rater) => {
-        rater.answers.forEach((ans) => {
-          const questionId = ans.questionId.toString();
-
-          // Ensure there's an entry for this questionId
-          if (!averageRaterAnswers[questionId]) {
-            averageRaterAnswers[questionId] = {
-              before: 0,
-              after: 0,
-            };
-          }
-
-          averageRaterAnswers[questionId].before += ans.answer;
+      // Handle potentially empty raterAnswers for before and after separately
+      if (
+        raterAnswers.length > 0 &&
+        raterAnswers[0].raters &&
+        raterAnswers[0].raters.length > 0
+      ) {
+        raterAnswers[0].raters.forEach((rater) => {
+          rater.answers.forEach((ans) => {
+            const questionId = ans.questionId.toString();
+            averageRaterAnswers[questionId].before += ans.answer;
+          });
         });
-      });
 
-      // // Calculate the average by dividing by the number of raters
-      // questions.forEach((question) => {
-      //   averageRaterAnswers[question._id].before /=
-      //     raterAnswers[0].raters.length;
-      // });
+        const firstAnsRaters = raterAnswers[0].raters.filter(
+          (rater) => rater.answers.length !== 0
+        );
 
-      // Calculate the user's second answers and update the averageRaterAnswers
-      raterAnswers[1].raters.forEach((rater) => {
-        rater.answers.forEach((ans) => {
-          const questionId = ans.questionId.toString();
-
-          // Ensure there's an entry for this questionId
-          if (!averageRaterAnswers[questionId]) {
-            averageRaterAnswers[questionId] = {
-              before: 0,
-              after: 0,
-            };
-          }
-
-          averageRaterAnswers[questionId].after += ans.answer;
+        questions.forEach((question) => {
+          averageRaterAnswers[question._id].before /=
+            firstAnsRaters.length || 1; // Avoid division by zero
         });
-      });
+      }
 
-      // Calculate the average for the user's second answers
-      questions.forEach((question) => {
-        averageRaterAnswers[question._id].before /=
-          raterAnswers[0].raters.length;
+      // Repeat the process for the second set of rater answers, if available
+      if (
+        raterAnswers.length > 1 &&
+        raterAnswers[1].raters &&
+        raterAnswers[1].raters.length > 0
+      ) {
+        raterAnswers[1].raters.forEach((rater) => {
+          rater.answers.forEach((ans) => {
+            const questionId = ans.questionId.toString();
+            averageRaterAnswers[questionId].after += ans.answer;
+          });
+        });
 
-        averageRaterAnswers[question._id].after /=
-          raterAnswers[1].raters.length; // Assuming each user takes the quiz twice
-      });
+        const secondAnsRaters = raterAnswers[1].raters.filter(
+          (rater) => rater.answers.length !== 0
+        );
 
+        questions.forEach((question) => {
+          averageRaterAnswers[question._id].after /=
+            secondAnsRaters.length || 1; // Avoid division by zero
+        });
+      }
       // Calculate the differences for each question and the total difference for the key
       const keyResult = questions.map((question) => {
         const questionId = question._id.toString();
@@ -452,15 +338,15 @@ exports.getUserAnswersReportTotal = asyncHandler(async (req, res) => {
           question: question.text,
           before: {
             user: userAnswerBefore ? userAnswerBefore.answer : null,
-            raters: averageRaterAnswers[questionId].before.toFixed(2),
+            raters: Number(averageRaterAnswers[questionId].before.toFixed(2)), //will be 0 if no rater answered
           },
           after: {
             user: userAnswerAfter ? userAnswerAfter.answer : null,
-            raters: averageRaterAnswers[questionId].after.toFixed(2),
+            raters: Number(averageRaterAnswers[questionId].after.toFixed(2)), //will be 0 if no rater answered
           },
           avg: {
-            user: userDiff.toFixed(2),
-            raters: ratersDiff.toFixed(2),
+            user: Number(userDiff.toFixed(2)),
+            raters: Number(ratersDiff.toFixed(2)),
           },
         };
       });
@@ -507,9 +393,10 @@ exports.getUserAnswersReportTotal = asyncHandler(async (req, res) => {
           }, 0) / questions.length,
       };
 
-     
       results.push({
         key: key.name, // You can use any key identifier here
+        ratersBefore: firstAnsRaters.length,
+        ratersAfter: secondAnsRaters.length,
         desc: key.desc ? key.desc : null,
         questions: keyResult,
         graph: graph,
@@ -519,10 +406,12 @@ exports.getUserAnswersReportTotal = asyncHandler(async (req, res) => {
 
     return res.status(200).json(results);
   } catch (error) {
+    console.error("Error: ", error.message);
+
     return res.status(400).json({
       status: "failed",
-      error: error.message,
-      msg: "User should take the quiz twice, and all raters should submit their answers in both times",
+      msg: error.message,
+      msg2: "User should take the quiz twice, and all raters should submit their answers in both times",
     });
   }
 });
@@ -556,28 +445,42 @@ exports.getAnsweredQuestions = asyncHandler(async (userId) => {
   return answeredQuestions;
 });
 //--------------------------------------------------------------------------------------------------------------//
-const SendEmailsToRaters = async (answer, userEmail) => {
+const SendEmailsToRaters = async (answer, senderName) => {
   const url = `${process.env.RATERS_URL}`;
   for (const rater of answer.raters) {
     const raterEmail = rater.email;
 
     try {
-      let emailMessage = `مرحبًا ${raterEmail} 
-          \n صديقك ${userEmail} قام بدعوتك
-          \n لتقييمه في اختبار سريع
-          \n إليك الرابط : ${url}
-          \n استخدم هذا الرمز عند تسجيل إجابتك : ${answer._id}`;
+      console.log("Sending email to: ", raterEmail);
+      let emailMessage = `بسم الله الرحمن الرحيم
+
+      عزيزي/عزيزتي ${rater.name} 
+      
+      السلام عليكم ورحمة الله وبركاته..
+      وأسعد الله أوقاتكم بكل خير..
+      
+      يتقدم إليكم ${senderName}، بوافر الشكر والتقدير على تقييمه على مقياس "نعم أستطيع"، والذي سيكون له أثره البالغ في تطويره.
+       
+      نأمل منكم الاستجابة للدعوة والمشاركة في تقييمه، وذلك من خلال الرابط التالي:
+      ${url}
+      واستخدام الرمز التالي عند تسجيل إجابتك:
+      ${answer._id}
+
+      شكراً لكم...
+      مجموعة بناء
+      فريق برنامج نعم أستطيع`;
 
       await sendEmail({
         to: raterEmail,
-        subject: `rate your friend ${userEmail}`,
+        subject: `دعوة لتقييم ${senderName}`,
         text: emailMessage,
       });
 
       rater.gotEmailAt = Date.now(); // Update gotEmailAt
       await rater.save(); // Save the updated rater
     } catch (err) {
-      return next(new ApiError("There is a problem with sending Email", 500));
+      console.error("Error: " + err.message);
+      return new ApiError("There is a problem with sending Email", 500);
     }
   }
 
