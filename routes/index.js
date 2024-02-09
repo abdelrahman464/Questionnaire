@@ -5,6 +5,7 @@ const answerRoute = require("./answerRoute");
 const questionRoute = require("./questionRoute");
 const organizationRoute = require("./organizationRoute");
 const webSiteInfoRoute = require("./webSiteInfoRoute");
+const contactUsRoute = require("./contactUsRoute");
 
 const mountRoutes = (app) => {
   // Mount Routes
@@ -15,5 +16,6 @@ const mountRoutes = (app) => {
   app.use("/api/v1/questions", questionRoute);
   app.use("/api/v1/organizations", organizationRoute);
   app.use("/api/v1/webSiteInfo", webSiteInfoRoute);
+  app.use("/api/v1/contactUs", contactUsRoute);
 };
 module.exports = mountRoutes;
