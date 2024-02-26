@@ -22,14 +22,20 @@ const {
   availUserTakeQuiz,
   removeKeysFromUser,
   addKeysToUser,
-  changeUserOrganization, // Added changeUserOrganization service
+  getUserReport,
+  availUserToSkipRaters,
 } = require("../services/userService");
-const { route } = require("./answerRoute");
 
 const router = express.Router();
-
+// 1 - getMe
 router.get("/getMe", authServices.protect, getLoggedUserData, getUser);
-router.put(
+// 2 - get user's report
+router
+  .route("/getUserReport/:id")
+  .get(authServices.protect, authServices.allowedTo("admin"), getUserReport);
+// 3- avail User To SkipRaters
+router.put('/availUserToSkipRaters/:id', authServices.protect, authServices.allowedTo("admin"), availUserToSkipRaters)
+  router.put(
   "/changeMyPassword",
   authServices.protect,
   changeLoggedUserPasswordValidator,
@@ -52,7 +58,7 @@ router
     createUserValidator,
     createUser
   );
-router.post("/signUp",createUserValidator, signUp);
+router.post("/signUp", createUserValidator, signUp);
 
 router
   .route("/:id")

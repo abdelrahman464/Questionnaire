@@ -83,6 +83,10 @@ exports.updateUserValidator = [
     .optional()
     .isMobilePhone()
     .withMessage("Invalid phone number "),
+  check("skipRaters")
+    .optional()
+    .isBoolean()
+    .withMessage("Invalid skipRaters value"),
 
   validatorMiddleware,
 ];

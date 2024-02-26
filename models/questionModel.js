@@ -20,6 +20,11 @@ const questionSchema = mongoose.Schema({
   },
 });
 
+// pre-find middleware
+questionSchema.pre("find", function (next) {
+  this.populate("section");
+  next();
+});
 
 //2- create model
 const QuestionModel = mongoose.model("Question", questionSchema);

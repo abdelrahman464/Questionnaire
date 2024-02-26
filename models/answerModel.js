@@ -46,24 +46,27 @@ const answerSchema = mongoose.Schema({
       gotEmailAt: {
         type: Date,
       },
-      answers: [
-        {
-          questionId: {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: "Question",
-            // required: true,
+      answers: {
+        type: [
+          {
+            questionId: {
+              type: mongoose.Schema.Types.ObjectId,
+              ref: "Question",
+              // required: true,
+            },
+            answer: {
+              type: Number,
+              min: 0,
+              max: 5,
+              // required: true,
+            },
+            answerText: {
+              type: String,
+            },
           },
-          answer: {
-            type: Number,
-            min: 0,
-            max: 5,
-            // required: true,
-          },
-          answerText: {
-            type: String,
-          },
-        },
-      ],
+        ],
+        default: [],
+      },
     },
   ],
 });

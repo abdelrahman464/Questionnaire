@@ -28,6 +28,10 @@ const userShcema = new mongoose.Schema(
     retakeQuizAt: {
       type: Date,
     },
+    skipRaters: {
+      type: Boolean,
+      default: false,
+    },
     password: {
       type: String,
       // required: [true, "password required"],
