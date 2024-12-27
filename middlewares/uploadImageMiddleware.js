@@ -32,3 +32,14 @@ exports.uploadSingleImage = (fieldName) => multerOptions().single(fieldName);
 
 exports.uploadMixOfImages = (arrayOfFields) =>
   multerOptions().fields(arrayOfFields);
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, "./uploads"); // Save files in 'uploads' directory
+  },
+  filename: (req, file, cb) => {
+    cb(null, `${Date.now()}-${file.originalname}`);
+  },
+});
+
+exports.uploadFile = multer({ storage });

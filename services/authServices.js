@@ -14,7 +14,6 @@ const generateToken = require("../utils/generateToken");
 exports.login = asyncHandler(async (req, res, next) => {
   //1- check if password and emaail in the body
   //2- check if user exist & check if password is correct+
-  console.log(req.body);
   let user;
   let token;
   if (!req.body.type || req.body.type === "admin") {

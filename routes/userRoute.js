@@ -6,7 +6,8 @@ const {
   updateUserValidator,
   deleteUserValidator,
   changeLoggedUserPasswordValidator,
-  changeUserOrganizationValidator, // Added validator for changeUserOrganization
+  // Added validator for changeUserOrganization
+  updateManyUsersValidator,
 } = require("../utils/validators/userValidator");
 const authServices = require("../services/authServices");
 const {
@@ -24,7 +25,11 @@ const {
   addKeysToUser,
   getUserReport,
   availUserToSkipRaters,
+  updateManyUsers,
+  storeManyUsers,
 } = require("../services/userService");
+
+const { uploadFile } = require("../middlewares/uploadImageMiddleware");
 
 const router = express.Router();
 // 1 - getMe
@@ -34,13 +39,27 @@ router
   .route("/getUserReport/:id")
   .get(authServices.protect, authServices.allowedTo("admin"), getUserReport);
 // 3- avail User To SkipRaters
-router.put('/availUserToSkipRaters/:id', authServices.protect, authServices.allowedTo("admin"), availUserToSkipRaters)
-  router.put(
+router.put(
+  "/availUserToSkipRaters/:id",
+  authServices.protect,
+  authServices.allowedTo("admin"),
+  availUserToSkipRaters
+);
+router.put(
   "/changeMyPassword",
   authServices.protect,
   changeLoggedUserPasswordValidator,
   updateLoggedUserPassword
 );
+
+router.put(
+  "/updateManyUsers",
+  authServices.protect,
+  updateManyUsersValidator,
+  updateManyUsers
+);
+router.post("/storeManyUsers", uploadFile.single("file"), storeManyUsers);
+
 router
   .route("/createadmin")
   .post(
@@ -58,6 +77,7 @@ router
     createUserValidator,
     createUser
   );
+
 router.post("/signUp", createUserValidator, signUp);
 
 router

@@ -126,3 +126,14 @@ exports.changeLoggedUserPasswordValidator = [
     }),
   validatorMiddleware,
 ];
+//-------------
+exports.updateManyUsersValidator = [
+  check("ids").isArray().withMessage("Invalid User ids format"),
+  check("change")
+    .notEmpty()
+    .withMessage("change is required")
+    .isIn(["deleteUsers", "skipRaters", "doNotSkipRaters", "availUsersToRetakeTakeQuiz"])
+    .withMessage("Invalid change value "),
+
+  validatorMiddleware,
+];

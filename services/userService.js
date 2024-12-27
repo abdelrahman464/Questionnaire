@@ -1,3 +1,4 @@
+"use strict";
 const asyncHandler = require("express-async-handler");
 const bcrypt = require("bcryptjs");
 const ApiError = require("../utils/apiError");
@@ -5,6 +6,8 @@ const factory = require("./handllerFactory");
 const User = require("../models/userModel");
 const Answer = require("../models/answerModel");
 const generateToken = require("../utils/generateToken");
+const { off } = require("pdfkit");
+const { processExcel } = require("../middlewares/excelMiddlware");
 
 //@desc get list of users
 //@route GET /api/v1/users
@@ -35,14 +38,14 @@ exports.getUser = asyncHandler(async (req, res) => {
 //@desc generate code for user
 //@route POST /api/v1/users
 //@access private
-function generateNumber(char) {
+exports.generateNumber = (char) => {
   const currentYear = new Date().getFullYear();
   const randomNumbers = Math.floor(Math.random() * 1000000000); // Generate 8 random numbers
   const result = `${char}${currentYear}${randomNumbers
     .toString()
     .padStart(8, "0")}`;
   return result;
-}
+};
 
 //@desc create new user
 //@route POST /api/v1/users
@@ -50,13 +53,13 @@ function generateNumber(char) {
 
 exports.createUser = asyncHandler(async (req, res, next) => {
   //1-create user
-  const code = generateNumber(req.body.email.charAt(0).toUpperCase());
+  const code = this.generateNumber(req.body.email.charAt(0).toUpperCase());
 
   const user = await User.create({
     name: req.body.name,
     email: req.body.email,
-    code,
     phone: req.body.phone,
+    code,
     organization: req.body.organization ? req.body.organization : null,
     allowed_keys: req.body.allowed_keys,
   });
@@ -358,3 +361,55 @@ exports.availUserToSkipRaters = asyncHandler(async (req, res) => {
   await user.save();
   return res.status(200).json({ status: "success", data: user });
 });
+//-----------------------------------------------
+exports.updateManyUsers = async (req, res) => {
+  try {
+    const { ids, change } = req.body;
+    const action = {};
+    const filter = { _id: { $in: ids } };
+    if (change === "deleteUsers") {
+      await User.deleteMany(filter);
+      return res
+        .status(200)
+        .json({ status: "success", msg: "تم حذف الحسابات بنجاح" });
+    } else if (change === "availUsersToRetakeTakeQuiz") {
+      filter.quizStatus = "finished";
+      filter.retakeQuizAt = { $exists: false };
+
+      action.quizStatus = "ready";
+      action.retakeQuizAt = Date.now();
+    } else if (change === "skipRaters") {
+      action.skipRaters = true;
+    } else if (change === "doNotSkipRaters") {
+      action.skipRaters = false;
+    }
+    console.log(filter, action);
+    const users = await User.updateMany(filter, action);
+    return res
+      .status(200)
+      .json({ status: "success", msg: "تم تحديث الحسابات بنجاح", users });
+  } catch (err) {
+    return res.status(500).json({ status: "error", message: err.message });
+  }
+};
+//---------------------------------------------
+exports.storeManyUsers = async (req, res) => {
+  try {
+    if (!req.file) {
+      return res
+        .status(400)
+        .json({ status: "failed", message: "لم يتم رفع اي ملف" });
+    }
+    const result = await processExcel(req.file.path);
+    console.log(result);
+    const users = await User.insertMany(result.usersData);
+
+    return res.status(200).json({
+      message: "تم تخزين بيانات المستخدمين بنجاح",
+      users,
+      existingUsers: result.existingUsers,
+    });
+  } catch (err) {
+    return res.status(500).json({ status: "error", message: err.message });
+  }
+};
