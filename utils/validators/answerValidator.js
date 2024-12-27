@@ -15,19 +15,23 @@ exports.userAnswerValidator = [
     .isArray({ min: 1, max: 3 })
     .withMessage("raterEmails must be an array of 1 to 3 emails")
     .custom((raterEmails) => {
-      // Validate each email in the raterEmails array
-      // eslint-disable-next-line no-restricted-syntax
+      // Check if raterEmails only contain nulls
+      if (raterEmails.every((email) => email === null)) {
+        // If only nulls, skip further validation
+        return true;
+      }
       for (const email of raterEmails) {
         // eslint-disable-next-line no-use-before-define
-        if (!isValidEmail(email)) {
+        if (email !== null && !isValidEmail(email)) {
           throw new Error("Invalid email address");
         }
       }
       return true;
     })
     .custom((raterEmails) => {
-      const uniqueEmails = new Set(raterEmails);
-      return uniqueEmails.size === raterEmails.length;
+      const filteredEmails = raterEmails.filter((email) => email !== null);
+      const uniqueEmails = new Set(filteredEmails);
+      return uniqueEmails.size === filteredEmails.length;
     })
     .withMessage("يجب ان تكون ايميلات المقيمين غير متكرره"),
 

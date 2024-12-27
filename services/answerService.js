@@ -81,12 +81,19 @@ exports.saveAnswers = asyncHandler(async (req, res) => {
       .status(400)
       .json({ status: "لا يمكنك اخذ الاختبار مره اخري حتي يأذن لك الادمن" });
   }
-
+  const filteredEmails = raterEmails.filter((email) => email !== null);
   //TODO add emails of raters
-  let raters = raterEmails?.map((email, index) => ({
+  let raters = filteredEmails?.map((email, index) => ({
     email: email.toLowerCase(),
     name: raterNames[index], // Assuming raterNames has the corresponding names
   }));
+  //reset to it
+  // //TODO add emails of raters
+  // let raters = raterEmails?.map((email, index) => ({
+  //   email: email.toLowerCase(),
+  //   name: raterNames[index], // Assuming raterNames has the corresponding names
+  // }));
+
   //-------------------B1 end-------------------//
   //-------------------B2-------------------//
   //userAnswers--> will be all answers for this user
@@ -127,11 +134,11 @@ exports.saveAnswers = asyncHandler(async (req, res) => {
   //income --> to check whether i should send emails to raters ot not
   let message = "";
   const status = await updateUserQuizStatus(answer.userAnswer, user);
-
+  let SendEmails = "";
   // send to raters email with this answerId
   if (status === "finished") {
     if (answer.raters.length !== 0) {
-      await SendEmailsToRaters(answer, user.name);
+      SendEmails = await SendEmailsToRaters(answer, user.name);
     }
     answer.isUserAnserCompleted = 1;
     await answer.save();
@@ -143,7 +150,9 @@ exports.saveAnswers = asyncHandler(async (req, res) => {
   //-------------------B4 end-------------------//
 
   //send response
-  return res.status(200).json({ status: "success", message });
+  return res
+    .status(200)
+    .json({ status: "success", message, SendEmails: SendEmails });
 });
 //--------------------------------------------------------------------------------------//
 //first second ?  ?  ?  ?
@@ -222,8 +231,7 @@ exports.getUserAnswers = asyncHandler(async (req, res) => {
     // Return the formatted response
     res
       .status(200)
-      .json({ ratersNumber: userAnswers[status].raters.length,
-        response2 });
+      .json({ ratersNumber: userAnswers[status].raters.length, response2 });
   } catch (error) {
     console.error("Error: ", error);
     throw error;
@@ -491,7 +499,8 @@ const SendEmailsToRaters = async (answer, senderName) => {
       await rater.save(); // Save the updated rater
     } catch (err) {
       console.error("Error: " + err.message);
-      return new ApiError("There is a problem with sending Email", 500);
+      return `${err.message}`;
+      // return new ApiError("There is a problem with sending Email", 500);
     }
   }
 
