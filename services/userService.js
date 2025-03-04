@@ -12,16 +12,14 @@ const { processExcel } = require("../middlewares/excelMiddlware");
 //@desc get list of users
 //@route GET /api/v1/users
 //@access private
-exports.getUsers = asyncHandler(async (req, res) => {
-  const user = await User.find().populate({
+exports.getUsers = factory.getALl(
+  User,
+  {
     path: "allowed_keys",
     select: "name",
-  });
-  if (!user) {
-    throw new ApiError(`لا يوجد مستخدمين`, 404);
-  }
-  return res.status(200).json({ status: "success", data: user });
-});
+  },
+  "allowed_keys"
+);
 //@desc get specific User by id
 //@route GET /api/v1/User/:id
 //@access private
@@ -38,7 +36,7 @@ exports.getUser = asyncHandler(async (req, res) => {
 //@desc generate code for user
 //@route POST /api/v1/users
 //@access private
-exports.generateNumber = (char) => {
+const generateNumber = (char) => {
   const currentYear = new Date().getFullYear();
   const randomNumbers = Math.floor(Math.random() * 1000000000); // Generate 8 random numbers
   const result = `${char}${currentYear}${randomNumbers
@@ -53,7 +51,7 @@ exports.generateNumber = (char) => {
 
 exports.createUser = asyncHandler(async (req, res, next) => {
   //1-create user
-  const code = this.generateNumber(req.body.email.charAt(0).toUpperCase());
+  const code = generateNumber(req.body.email.charAt(0).toUpperCase());
 
   const user = await User.create({
     name: req.body.name,
@@ -269,8 +267,10 @@ const transformRaterAnswers = (raterAnswers) => {
 //@route GET /api/v1/user/getUsersAnswersReportTotal
 //@access public/protect
 exports.getUserReport = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const user = await User.findById(id).select("-allowed_keys -updatedAt -__v ");
+  const { id: userId } = req.params;
+  const user = await User.findById(userId).select(
+    "-allowed_keys -updatedAt -__v "
+  );
   if (!user) {
     return res.status(404).json({ status: "fail", message: "User not found" });
   }
@@ -286,8 +286,14 @@ exports.getUserReport = asyncHandler(async (req, res) => {
 
   const answer = await Answer.find({
     // userId: id,
-    userId: "65a81f6ac087a40be1f67448",
+    userId: userId,
   }).populate("userAnswer.questionId");
+
+  if (answer.length < 2) {
+    return res
+      .status(404)
+      .json({ status: "fail", message: "المستخدم لم ينهي الاختبارين" });
+  }
   // return res.json({answer})
   //make array of object conatin uestion.name and uer answer before and after and rater answer
   //get question

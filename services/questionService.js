@@ -7,7 +7,7 @@ const { getAnsweredQuestions } = require("./answerService");
 //@desc get list of Questions
 //@route GET /api/v1/Questions
 //@access public
-exports.getQuestions = factory.getALl(Question, "Key");
+exports.getQuestions = factory.getALl(Question, "", "Key");
 //@desc get specific Question by id
 //@route GET /api/v1/Questions/:id
 //@access public
@@ -44,7 +44,7 @@ exports.takeTest = async (req, res) => {
       length: questions.length,
       questions: questions,
     });
-    
+
   // filter questions that user didn't answer
   const filteredQuestions = questions.filter((question) => {
     const questionIdString = question._id.toString();

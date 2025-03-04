@@ -1,177 +1,201 @@
-this file contain these functions 
-  countAnswersAverage
-  countRatersAnswersAverage
-  generatePDF
-
-
-
-
-
-
-//@desc Count The average answers for a user in each section
-//@route GET /api/v1/answer/countanswers
-//@access private
-exports.countAnswersAverage = asyncHandler(async (req, res) => {
-    const result = [];
-  
-    const userId = req.user._id;
-    // Get all sections
-    const sections = await Key.find();
-  
-    // Loop on each section
-    for (const section of sections) {
-      // Find all answers for the user in the section
-      const answers = await Answer.find({
-        userId,
-        section: section.id,
-      });
-      // Check if there are answers
-      if (answers.length === 0) {
-        return res.status(404).json({ status: `user didn't take the quiz` });
-      }
-      let totalAnswerEvaluation = 0;
-      let totalUserAnswers = 0;
-      // Calculate the total answerEvaluation
-      for (const answer of answers) {
-        for (const userAnswer of answer.userAnswer) {
-          totalAnswerEvaluation += userAnswer.answer;
-          totalUserAnswers++;
-        }
-      }
-  
-      // Calculate the average answer evaluation
-      const averageAnswerEvaluation = totalAnswerEvaluation / totalUserAnswers;
-  
-      // Add the average answerEvaluation to the result
-      result.push({
-        sectionId: section.id,
-        sectionname: section.name,
-        averageAnswerEvaluation,
-      });
+exports.getUserAnswersReportTotal = asyncHandler(async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
     }
-    // Return the result
-    res.json(result);
-  });
-  
-  //@desc Count The average answers for a rater in each section
-  //@route GET /api/v1/answer/countanswersraters
-  //@access private
-  exports.countRatersAnswersAverage = asyncHandler(async (req, res) => {
-    const result = [];
-  
-    const userId = req.user._id;
-    // Get all sections
-    const sections = await Key.find();
-    // Loop on each section
-    // eslint-disable-next-line no-restricted-syntax
-    for (const section of sections) {
-      // Find all answers for the user in the section
-      // eslint-disable-next-line no-await-in-loop
-      const answers = await Answer.findOne({
-        userId,
-        questionId: {
-          section: section.id,
-        },
-      });
-      // Check if there are answers
-      if (!answers) {
-        return res.status(404).json({ status: `user didn't take the quiz` });
-      }
-      // Calculate the total answerEvaluation
-      answers.raters.forEach((rater) => {
-        const totalAnswerevaluation = rater.answers.reduce((acc, raterAnser) => {
-          acc += raterAnser.answer;
-          return acc;
-        }, 0);
-  
-        // Calculate the average answerevaluation
-        const averageAnswerevaluation =
-          totalAnswerevaluation / rater.answers.length;
-  
-        // Add the average answerevaluation to the result
-        result.push({
-          sectionId: section.id,
-          sectionname: section.name,
-          averageAnswerevaluation,
+    //check if user took the two exam
+    if (!user.retakeQuizAt && user.quizStatus !== "finished") {
+      return res
+        .status(404)
+        .json({ message: "عليك ب اكمال الاختبارين لتحصل علي التقرير الشامل" });
+    }
+
+    // Find all keys
+    const keys = await Key.find({ _id: { $in: user.allowed_keys } });
+    if (keys.length === 0) {
+      return res
+        .status(404)
+        .json({
+          status: "failed",
+          message: "المفاتيح المتاحه للمستخدم غير موجوده",
         });
+    }
+
+    // Initialize an array to store the results for all keys and questions
+    const results = [];
+    // Iterate over each key
+    for (const key of keys) {
+      let firstAnsRaters = 0;
+      let secondAnsRaters = 0;
+      // Find all questions for the current key
+      const questions = await Questions.find({ section: key._id });
+      if (!questions) {
+        continue;
+      }
+      // Find the user's answers for the current key
+      const userAnswers = await Answer.find({
+        userId: userId,
+        "userAnswer.questionId": { $in: questions.map((q) => q._id) },
+      });
+
+      // Create a map to store the average raters' answers for each question
+      const averageRaterAnswers = {};
+
+      // Initialize the averageRaterAnswers map
+      questions.forEach((question) => {
+        averageRaterAnswers[question._id] = {
+          before: 0,
+          after: 0,
+        };
+      });
+
+      //------------------------------------------------------------------------------
+
+      if (userAnswers[0].raters) {
+        userAnswers[0].raters.forEach((rater) => {
+          rater.answers.forEach((ans) => {
+            const questionId = ans.questionId.toString();
+            if (!averageRaterAnswers[questionId]) {
+              // Ensure initialization
+              averageRaterAnswers[questionId] = { before: 0, after: 0 };
+            }
+            averageRaterAnswers[questionId].before += ans.answer;
+          });
+        });
+
+        // Only proceed with this block if the first set of answers has raters
+        firstAnsRaters = userAnswers[0].raters.filter(
+          (rater) => rater.answers.length !== 0
+        );
+
+        questions.forEach((question) => {
+          const questionId = question._id.toString();
+          if (firstAnsRaters.length) {
+            // Avoid division by zero
+            averageRaterAnswers[questionId].before /= firstAnsRaters.length;
+          }
+        });
+      }
+
+      //--------------------------------------------------------------------------------
+      // Repeat the process for the second set of rater answers, if available
+      if (userAnswers[1].raters) {
+        userAnswers[1].raters.forEach((rater) => {
+          rater.answers.forEach((ans) => {
+            const questionId = ans.questionId.toString();
+            averageRaterAnswers[questionId].after += ans.answer;
+          });
+        });
+
+        secondAnsRaters = userAnswers[1].raters.filter(
+          (rater) => rater.answers.length !== 0
+        );
+
+        questions.forEach((question) => {
+          averageRaterAnswers[question._id].after /=
+            secondAnsRaters.length || 1; // Avoid division by zero
+        });
+      }
+      //--------------------------------------------------------------------------------
+
+      // Calculate the differences for each question and the total difference for the key
+      const keyResult = questions.map((question) => {
+        const questionId = question._id.toString();
+        const userAnswerBefore = userAnswers[0]?.userAnswer.find((ans) =>
+          ans.questionId.equals(question._id)
+        );
+        const userAnswerAfter = userAnswers[1]?.userAnswer.find((ans) =>
+          ans.questionId.equals(question._id)
+        );
+
+        // Calculate differences
+        const userDiff = userAnswerAfter
+          ? userAnswerAfter.answer - userAnswerBefore.answer
+          : null;
+        const ratersDiff =
+          averageRaterAnswers[questionId].after -
+          averageRaterAnswers[questionId].before;
+
+        return {
+          question: question.text,
+          before: {
+            user: userAnswerBefore ? userAnswerBefore.answer : null,
+            raters: Number(averageRaterAnswers[questionId].before.toFixed(2)), //will be 0 if no rater answered
+          },
+          after: {
+            user: userAnswerAfter ? userAnswerAfter.answer : null,
+            raters: Number(averageRaterAnswers[questionId].after.toFixed(2)), //will be 0 if no rater answered
+          },
+          avg: {
+            user: Number(userDiff.toFixed(2)),
+            raters: Number(ratersDiff.toFixed(2)),
+          },
+        };
+      });
+
+      // Calculate the total differences for user and raters across all questions
+      const totalDifference = keyResult.reduce(
+        (total, question) => {
+          if (question.avg.user !== null) {
+            total.user += Number(question.avg.user);
+          }
+          if (question.avg.raters !== null) {
+            total.raters += Number(question.avg.raters);
+          }
+          return total;
+        },
+        { user: 0, raters: 0 }
+      );
+
+      // Calculate the graph section for this key
+      const graph = {
+        userBefore:
+          keyResult.reduce((total, question) => {
+            if (question.before.user !== null) {
+              total += question.before.user;
+            }
+            return total;
+          }, 0) / questions.length,
+        userAfter:
+          keyResult.reduce((total, question) => {
+            if (question.after.user !== null) {
+              total += question.after.user;
+            }
+            return total;
+          }, 0) / questions.length,
+        raterBefore:
+          keyResult.reduce((total, question) => {
+            total += question.before.raters;
+            return total;
+          }, 0) / questions.length,
+        raterAfter:
+          keyResult.reduce((total, question) => {
+            total += question.after.raters;
+            return total;
+          }, 0) / questions.length,
+      };
+
+      results.push({
+        key: key.name, // You can use any key identifier here
+        ratersBefore: firstAnsRaters.length,
+        ratersAfter: secondAnsRaters.length,
+        desc: key.desc ? key.desc : null,
+        questions: keyResult,
+        graph: graph,
+        totalDifference: totalDifference,
       });
     }
-  
-    // Return the result
-    res.json(result);
-  });
-  
-  //@desc generatepdf
-  //@route GET /api/v1/answer/generatepdf
-  //@access private
-  exports.generatePDF = asyncHandler(async (req, res) => {
-    const userId = req.user._id;
-    // Create a new PDF document
-    const answers = await Answer.find({ userId: userId });
-    // const firstAnswers =
-    const questions = await Questions.find();
-  
-    // const secondAnswers = answers.userAnswer.slice(3, 6);
-    firstAnswers = answers[0];
-    secondAnswers = answers[1];
-  
-    const pdfdocument = new PDF();
-    // Add the header for the "User Answers" section
-    //Iterate on the first user answers
-    pdfdocument.text("First User Answers");
-    for (const questionAnswer of firstAnswers.userAnswer) {
-      const specificQuestion = questions.find((question) =>
-        question._id.equals(questionAnswer.questionId)
-      );
-      pdfdocument.text(
-        `Question: ${specificQuestion.text} Answer: ${questionAnswer.answer}`
-      );
-    }
-    pdfdocument.text(`-----------------`);
-    // Add the header for the "Rater Answers" section
-    pdfdocument.text("First Rater Answers");
-    // Save the PDF documents to files
-    const resultsFilename = `results-${userId}.pdf`;
-    pdfdocument.pipe(fs.createWriteStream(resultsFilename));
-    //Iterate on the raters first test
-    for (const rater of firstAnswers.raters) {
-      for (const questionAnswer of rater.answers) {
-        const specificQuestion = questions.find((question) =>
-          question._id.equals(questionAnswer.questionId)
-        );
-        pdfdocument.text(
-          `Question: ${specificQuestion.text} Answer: ${questionAnswer.answer}`
-        );
-      }
-      pdfdocument.text(`-----------------`);
-    }
-    pdfdocument.addPage();
-    //Iterate on the second user answers
-    pdfdocument.text("Second User Answers");
-    for (const questionAnswer of secondAnswers.userAnswer) {
-      const specificQuestion = questions.find((question) =>
-        question._id.equals(questionAnswer.questionId)
-      );
-      pdfdocument.text(
-        `Question: ${specificQuestion.text} Answer: ${questionAnswer.answer}`
-      );
-    }
-    pdfdocument.text(`-----------------`);
-    pdfdocument.text("Second Rater Answers");
-    for (const rater of secondAnswers.raters) {
-      for (const questionAnswer of rater.answers) {
-        const specificQuestion = questions.find((question) =>
-          question._id.equals(questionAnswer.questionId)
-        );
-        pdfdocument.text(
-          `Question: ${specificQuestion.text} Answer: ${questionAnswer.answer}`
-        );
-      }
-      pdfdocument.text(`-----------------`);
-    }
-  
-    pdfdocument.end();
-    setTimeout(() => {
-      res.download(resultsFilename);
-    }, 100);
-  });
+
+    return res.status(200).json(results);
+  } catch (error) {
+    console.error("Error: ", error.message);
+
+    return res.status(400).json({
+      status: "failed",
+      msg: error.message,
+      msg2: "User should take the quiz twice, and all raters should submit their answers in both times",
+    });
+  }
+});

@@ -245,7 +245,8 @@ exports.getUserAnswersReportTotal = asyncHandler(async (req, res) => {
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
-    //check if user took the two exam
+
+    // Check if the user has completed the two exams
     if (!user.retakeQuizAt && user.quizStatus !== "finished") {
       return res
         .status(404)
@@ -254,21 +255,27 @@ exports.getUserAnswersReportTotal = asyncHandler(async (req, res) => {
 
     // Find all keys
     const keys = await Key.find({ _id: { $in: user.allowed_keys } });
-    if (!keys) {
-      return res.status(404).json({ message: "keys not found" });
+    if (keys.length === 0) {
+      return res.status(404).json({
+        status: "failed",
+        message: "المفاتيح المتاحه للمستخدم غير موجوده",
+      });
     }
 
     // Initialize an array to store the results for all keys and questions
     const results = [];
+
     // Iterate over each key
     for (const key of keys) {
       let firstAnsRaters = 0;
       let secondAnsRaters = 0;
+
       // Find all questions for the current key
       const questions = await Questions.find({ section: key._id });
       if (!questions) {
         continue;
       }
+
       // Find the user's answers for the current key
       const userAnswers = await Answer.find({
         userId: userId,
@@ -286,54 +293,52 @@ exports.getUserAnswersReportTotal = asyncHandler(async (req, res) => {
         };
       });
 
-      //------------------------------------------------------------------------------
+      // Handle rater-related calculations only if user.skipRaters is false
+      if (!user.skipRaters) {
+        if (userAnswers[0].raters) {
+          userAnswers[0].raters.forEach((rater) => {
+            rater.answers.forEach((ans) => {
+              const questionId = ans.questionId.toString();
+              if (!averageRaterAnswers[questionId]) {
+                // Ensure initialization
+                averageRaterAnswers[questionId] = { before: 0, after: 0 };
+              }
+              averageRaterAnswers[questionId].before += ans.answer;
+            });
+          });
 
-      if (userAnswers[0].raters) {
-        userAnswers[0].raters.forEach((rater) => {
-          rater.answers.forEach((ans) => {
-            const questionId = ans.questionId.toString();
-            if (!averageRaterAnswers[questionId]) {
-              // Ensure initialization
-              averageRaterAnswers[questionId] = { before: 0, after: 0 };
+          // Only proceed with this block if the first set of answers has raters
+          firstAnsRaters = userAnswers[0].raters.filter(
+            (rater) => rater.answers.length !== 0
+          );
+
+          questions.forEach((question) => {
+            const questionId = question._id.toString();
+            if (firstAnsRaters.length) {
+              // Avoid division by zero
+              averageRaterAnswers[questionId].before /= firstAnsRaters.length;
             }
-            averageRaterAnswers[questionId].before += ans.answer;
           });
-        });
+        }
 
-        // Only proceed with this block if the first set of answers has raters
-        firstAnsRaters = userAnswers[0].raters.filter(
-          (rater) => rater.answers.length !== 0
-        );
-
-        questions.forEach((question) => {
-          const questionId = question._id.toString();
-          if (firstAnsRaters.length) {
-            // Avoid division by zero
-            averageRaterAnswers[questionId].before /= firstAnsRaters.length;
-          }
-        });
-      }
-
-      //--------------------------------------------------------------------------------
-      // Repeat the process for the second set of rater answers, if available
-      if (userAnswers[1].raters) {
-        userAnswers[1].raters.forEach((rater) => {
-          rater.answers.forEach((ans) => {
-            const questionId = ans.questionId.toString();
-            averageRaterAnswers[questionId].after += ans.answer;
+        if (userAnswers[1].raters) {
+          userAnswers[1].raters.forEach((rater) => {
+            rater.answers.forEach((ans) => {
+              const questionId = ans.questionId.toString();
+              averageRaterAnswers[questionId].after += ans.answer;
+            });
           });
-        });
 
-        secondAnsRaters = userAnswers[1].raters.filter(
-          (rater) => rater.answers.length !== 0
-        );
+          secondAnsRaters = userAnswers[1].raters.filter(
+            (rater) => rater.answers.length !== 0
+          );
 
-        questions.forEach((question) => {
-          averageRaterAnswers[question._id].after /=
-            secondAnsRaters.length || 1; // Avoid division by zero
-        });
+          questions.forEach((question) => {
+            averageRaterAnswers[question._id].after /=
+              secondAnsRaters.length || 1; // Avoid division by zero
+          });
+        }
       }
-      //--------------------------------------------------------------------------------
 
       // Calculate the differences for each question and the total difference for the key
       const keyResult = questions.map((question) => {
@@ -349,23 +354,28 @@ exports.getUserAnswersReportTotal = asyncHandler(async (req, res) => {
         const userDiff = userAnswerAfter
           ? userAnswerAfter.answer - userAnswerBefore.answer
           : null;
-        const ratersDiff =
-          averageRaterAnswers[questionId].after -
-          averageRaterAnswers[questionId].before;
+        const ratersDiff = user.skipRaters
+          ? 0
+          : averageRaterAnswers[questionId].after -
+            averageRaterAnswers[questionId].before;
 
         return {
           question: question.text,
           before: {
             user: userAnswerBefore ? userAnswerBefore.answer : null,
-            raters: Number(averageRaterAnswers[questionId].before.toFixed(2)), //will be 0 if no rater answered
+            raters: user.skipRaters
+              ? 0
+              : Number(averageRaterAnswers[questionId].before.toFixed(2)), //will be 0 if no rater answered
           },
           after: {
             user: userAnswerAfter ? userAnswerAfter.answer : null,
-            raters: Number(averageRaterAnswers[questionId].after.toFixed(2)), //will be 0 if no rater answered
+            raters: user.skipRaters
+              ? 0
+              : Number(averageRaterAnswers[questionId].after.toFixed(2)), //will be 0 if no rater answered
           },
           avg: {
             user: Number(userDiff.toFixed(2)),
-            raters: Number(ratersDiff.toFixed(2)),
+            raters: user.skipRaters ? 0 : Number(ratersDiff.toFixed(2)),
           },
         };
       });
@@ -400,22 +410,24 @@ exports.getUserAnswersReportTotal = asyncHandler(async (req, res) => {
             }
             return total;
           }, 0) / questions.length,
-        raterBefore:
-          keyResult.reduce((total, question) => {
-            total += question.before.raters;
-            return total;
-          }, 0) / questions.length,
-        raterAfter:
-          keyResult.reduce((total, question) => {
-            total += question.after.raters;
-            return total;
-          }, 0) / questions.length,
+        raterBefore: user.skipRaters
+          ? 0
+          : keyResult.reduce((total, question) => {
+              total += question.before.raters;
+              return total;
+            }, 0) / questions.length,
+        raterAfter: user.skipRaters
+          ? 0
+          : keyResult.reduce((total, question) => {
+              total += question.after.raters;
+              return total;
+            }, 0) / questions.length,
       };
 
       results.push({
         key: key.name, // You can use any key identifier here
-        ratersBefore: firstAnsRaters.length,
-        ratersAfter: secondAnsRaters.length,
+        ratersBefore: user.skipRaters ? 0 : firstAnsRaters.length,
+        ratersAfter: user.skipRaters ? 0 : secondAnsRaters.length,
         desc: key.desc ? key.desc : null,
         questions: keyResult,
         graph: graph,

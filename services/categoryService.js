@@ -4,7 +4,7 @@ const factory = require("./handllerFactory");
 //@desc get list of keys
 //@route GET /api/v1/keys
 //@access public
-exports.getKeys = factory.getALl(Key, "Key");
+exports.getKeys = factory.getALl(Key, "", "Key");
 //@desc get specific Key by id
 //@route GET /api/v1/keys/:id
 //@access public

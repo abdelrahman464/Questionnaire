@@ -40,14 +40,18 @@ exports.getOne = (Model, populationOt) =>
     res.status(200).json({ data: document });
   });
 
-exports.getALl = (Model, modelName = "") =>
+exports.getALl = (Model, populationOpt, modelName = "") =>
   asyncHandler(async (req, res) => {
     let filter = {};
     if (req.filterObj) {
       filter = req.filterObj;
     }
+    let query = Model.find(filter);
+    if (populationOpt) {
+      query = query.populate(populationOpt);
+    }
     const documentsCounts = await Model.countDocuments();
-    const apiFeatures = new ApiFeatures(Model.find(filter), req.query)
+    const apiFeatures = new ApiFeatures(query, req.query)
       .paginate(documentsCounts)
       .filter()
       .search(modelName)
